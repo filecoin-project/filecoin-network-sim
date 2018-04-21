@@ -4,7 +4,6 @@ import (
   "log"
   "context"
   "io"
-  "os"
   "fmt"
   "net/http"
   "io/ioutil"
@@ -13,32 +12,13 @@ import (
   network "github.com/filecoin-project/filnetsim/network"
 )
 
-// type Service struct {
-//   ctx  context.Context
-//   i    *Instance
-//   logs io.Reader
-// }
-
-// func (s *Service) Run() {
-//   for {
-//     i := SetupNetwork()
-//     s.logs := i.L
-//     ctx := s.ctx
-//     i.Run(ctx)
-//   }
-// }
-
-// func (s *Service) Logs() io.Reader {
-
-// }
-
 type Instance struct {
   N *network.Network
   R network.Randomizer
   L io.Reader
 }
 
-func SetupNetwork() *Instance {
+func SetupInstance() *Instance {
   dir, err := ioutil.TempDir("", "filnetsim")
   if err != nil {
     dir = "/tmp/filnetsim"
@@ -71,52 +51,22 @@ func (i *Instance) Run(ctx context.Context) {
 
 
 func runService(ctx context.Context) {
-  i := SetupNetwork()
+  i := SetupInstance()
   // s.logs = i.L
   ctx, cancel := context.WithCancel(ctx)
   defer cancel()
   go i.Run(ctx)
 
+  lh := NewLogHandler(ctx, i.L)
+
   // setup http
   http.Handle("/", http.FileServer(http.Dir("./filecoin-network-viz/viz-circle")))
-  http.HandleFunc("/logs", LogsHandler(i.L))
-  http.HandleFunc("/restart", RestartHandler)
+  http.HandleFunc("/logs", lh.HandleHttp)
+  // http.HandleFunc("/restart", RestartHandler)
 
   // run http
   fmt.Println("Listening at 127.0.0.1:7002/logs")
   log.Fatal(http.ListenAndServe(":7002", nil))
-}
-
-// hello world, the web server
-func RestartHandler(w http.ResponseWriter, req *http.Request) {
-
-}
-
-type HTTPHandler func(w http.ResponseWriter, req *http.Request)
-
-// hello world, the web server
-func LogsHandler(logs io.Reader) HTTPHandler {
-  return func(w http.ResponseWriter, req *http.Request) {
-    w.WriteHeader(http.StatusOK)
-    wf := w.(Flusher)
-    w2 := io.MultiWriter(wf, os.Stdout)
-    buf := make([]byte, 2048)
-    for {
-      n, err := logs.Read(buf)
-      if err != nil {
-        return
-      }
-
-      w2.Write(buf[:n])
-      wf.Flush()
-    }
-  }
-}
-
-type Flusher interface {
-  io.Writer
-
-  Flush()
 }
 
 func main() {

@@ -80,7 +80,6 @@ func (r *Randomizer) randomActions(ctx context.Context) {
 }
 
 func (r *Randomizer) doRandomAction(ctx context.Context, a Action) {
-
   switch a {
   case ActionPayment:  r.doActionPayment(ctx)
   case ActionAsk:      r.doActionAsk(ctx)
