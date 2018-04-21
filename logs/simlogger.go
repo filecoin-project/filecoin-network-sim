@@ -34,7 +34,7 @@ func (l *SimLogger) Close() error {
 // {"type": "MinerLeaves", "from": "mineraddr1"}
 // {"type": "ClientJoins", "from": "mineraddr1"}
 // {"type": "ClientLeaves", "from": "mineraddr1"}
-func (l *SimLogger) WriteEvent(e map[string]string) error {
+func (l *SimLogger) WriteEvent(e map[string]interface{}) error {
   return json.NewEncoder(l.pw).Encode(e)
 }
 
@@ -160,7 +160,7 @@ func (l *SimLogger) convertEL2SL(el map[string]interface{}) []map[string]interfa
     method := getStrSafe(tags, "method")
     switch method {
     case "": // SendPayment
-      e := newSimEvent(l.id)
+      e := newSimEvent(getStrSafe(tags, "from"))
       e["type"] = "SendPayment"
       e["to"] = getStrSafe(tags, "to")
       e["value"] = tags["value"]

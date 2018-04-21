@@ -1,10 +1,13 @@
 package daemon
 
 import (
+  "context"
   "encoding/json"
   "errors"
   "strings"
   "fmt"
+  "log"
+  "strconv"
 
   "github.com/filecoin-project/go-filecoin/types"
 
@@ -121,7 +124,7 @@ func (td *Daemon) CreateMinerAddr() (types.Address, error) {
     return minerAddr, err
   }
 
-  wait, err := td.MineForMessage(minerMessageCid.String())
+  wait, err := td.MineForMessage(context.TODO(), minerMessageCid.String())
   if err != nil {
     return minerAddr, err
   }
@@ -139,14 +142,16 @@ func (td *Daemon) CreateMinerAddr() (types.Address, error) {
   return addr, nil
 }
 
-func (td *Daemon) MineForMessage(msg string) (*Output, error) {
+func (td *Daemon) MineForMessage(ctx context.Context, msg string) (*Output, error) {
 
+  log.Print("message wait: mining for message ", msg)
   var outErr error
   var out *Output
 
   wait := make(chan struct{})
   go func() {
-    out, outErr = td.WaitForMessage(msg)
+    out, outErr = td.WaitForMessage(ctx, msg)
+    log.Print("message wait: mined message ", msg)
     close(wait)
   }()
 
@@ -160,13 +165,29 @@ func (td *Daemon) MineForMessage(msg string) (*Output, error) {
   return out, outErr
 }
 
-func (td *Daemon) WaitForMessage(msg string) (*Output, error) {
-  return td.Run("message", "wait",
-    "--return",
-    "--message=false",
-    "--receipt=false",
-    msg,
-  )
+func (td *Daemon) WaitForMessage(ctx context.Context, msg string) (out *Output, err error) {
+  log.Print("message wait: waiting for message ", msg)
+
+  // do it async to allow "canceling out" via context.
+  done := make(chan struct{})
+
+  go func() {
+    // sets the return vars
+    out, err = td.Run("message", "wait",
+      "--return",
+      "--message=false",
+      "--receipt=false",
+      msg,
+    )
+    close(done)
+  }()
+
+  select {
+  case <-ctx.Done():
+    return nil, ctx.Err()
+  case <-done:
+    return out, err
+  }
 }
 
 // CreateWalletAddr adds a new address to the daemons wallet and
@@ -193,21 +214,11 @@ func (td *Daemon) GetMainWalletAddress() (string, error) {
     return "", err
   }
 
-  var o struct {
-    Address string
-  }
-
-  err = json.Unmarshal([]byte(out.ReadStdout()), &o)
-  if err != nil {
-    return "", err
-  }
-  if o.Address == "" {
-    return "", errors.New("output format incorrect")
-  }
-  return o.Address, nil
+  addr := strings.Trim(out.ReadStdout(), "\n ")
+  return addr, nil
 }
 
-func (td *Daemon) SendFilecoin(from, to string, amt int) error {
+func (td *Daemon) SendFilecoin(ctx context.Context, from, to string, amt int) error {
   out, err := td.Run("message", "send",
     fmt.Sprintf("--value=%d", amt),
     fmt.Sprintf("--from=%s", from),
@@ -221,6 +232,19 @@ func (td *Daemon) SendFilecoin(from, to string, amt int) error {
     return err
   }
 
-  _, err = td.MineForMessage(cid.String())
+  _, err = td.MineForMessage(ctx, cid.String())
   return err
+}
+
+func (td *Daemon) GetBalance(addr string) (int, error) {
+  out, err := td.Run("wallet", "balance", addr)
+  if err != nil {
+    return 0, err
+  }
+
+  balance, err := strconv.Atoi(strings.Trim(out.ReadStdout(), "\n"))
+  if err != nil {
+    return balance, err
+  }
+  return balance, err
 }

@@ -87,6 +87,11 @@ func (n *Network) AddNode() (*Node, error) {
 
   n.logs.MixReader(node.Logs().Reader())
 
+  addr, err := d.GetMainWalletAddress()
+  if err == nil {
+    node.sl.WriteEvent(logs.NetworkChurnEvent(addr, "Miner", true))
+  }
+
   fmt.Println("added a new node to the network:", node.ID)
   return node, nil
 }
