@@ -85,7 +85,8 @@ type Daemon struct {
   swarmAddr string
   repoDir   string
 
-  init bool
+  init       bool
+  waitMining bool
 
   // The filecoin daemon process
   process *exec.Cmd
@@ -188,6 +189,18 @@ func (td *Daemon) EventLogStream() io.Reader {
   }()
 
   return r
+}
+
+func (td *Daemon) SetWaitMining(t bool) {
+  td.lk.Lock()
+  defer td.lk.Unlock()
+  td.waitMining = t
+}
+
+func (td *Daemon) WaitMining() bool {
+  td.lk.Lock()
+  defer td.lk.Unlock()
+  return td.waitMining
 }
 
 func (td *Daemon) ReadStdout() string {
@@ -328,10 +341,11 @@ func NewDaemon(options ...func(*Daemon)) (*Daemon, error) {
   }
 
   td := &Daemon{
-    cmdAddr:   fmt.Sprintf(":%d", cmdPort),
-    swarmAddr: fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", swarmPort),
-    repoDir:   dir,
-    init:      true, // we want to init unless told otherwise
+    cmdAddr:    fmt.Sprintf(":%d", cmdPort),
+    swarmAddr:  fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", swarmPort),
+    repoDir:    dir,
+    init:       true, // we want to init unless told otherwise
+    waitMining: true, // we want active wait unless told otherwise
   }
 
   // configure Daemon options

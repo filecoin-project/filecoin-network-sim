@@ -22,10 +22,13 @@ func TestRandomizer(t *testing.T) {
 
   r := Randomizer{
     Net:        net,
-    TotalNodes: 10,
-    BlockTime:  100 * time.Millisecond,
-    ActionTime: 300 * time.Millisecond,
-    Actions:    []Action{ActionPayment},
+    TotalNodes: 20,
+    BlockTime:  500 * time.Millisecond,
+    ActionTime: 100 * time.Millisecond,
+    Actions:    []Action{
+      ActionPayment,
+      ActionAsk,
+    },
   }
 
   ctx, cancel := context.WithCancel(context.Background())
@@ -41,7 +44,11 @@ func TestRandomizer(t *testing.T) {
   // rd := bytes.NewBuffer([]byte(s))
   counts := CountLogs(t, buf)
   t.Log(counts)
-  // assert.True(t, counts["NewBlockMined"] > int(runDuration / r.BlockTime))
+  assert.True(t, counts["NewBlockMined"] > (int(runDuration / r.BlockTime) / 2))
+  assert.True(t, counts["MinerJoins"] > 2)
+  assert.True(t, counts["BroadcastBlock"] >= counts["NewBlockMined"] - 5)
+  assert.True(t, counts["AddAsk"] > 5)
+  assert.True(t, counts["SendPayment"] > 1)
 }
 
 func CountLogs(t *testing.T, r io.Reader) map[string]int {

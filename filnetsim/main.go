@@ -49,8 +49,11 @@ func SetupNetwork() *Instance {
     Net:        n,
     TotalNodes: 10,
     BlockTime:  2 * time.Second,
-    ActionTime: 300 * time.Millisecond,
-    Actions:    []network.Action{network.ActionPayment},
+    ActionTime: 500 * time.Millisecond,
+    Actions:    []network.Action{
+      network.ActionPayment,
+      network.ActionAsk,
+    },
   }
 
   l := n.Logs().Reader()

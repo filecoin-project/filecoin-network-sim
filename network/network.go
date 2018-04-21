@@ -15,7 +15,9 @@ import (
 type Node struct {
   *daemon.Daemon
 
-  ID string
+  ID         string
+  WalletAddr string
+  MinerAddr  string
   sl *logs.SimLogger
 }
 
@@ -25,6 +27,18 @@ func (n *Node) Logs() *logs.SimLogger {
     n.sl = logs.NewSimLogger(n.ID, r)
   }
   return n.sl
+}
+
+func (n *Node) MinerIdentity() (string, error) {
+  if n.MinerAddr == "" {
+    a, err := n.CreateMinerAddr()
+    if err != nil {
+      return "", err
+    }
+    n.MinerAddr = a.String()
+  }
+
+  return n.MinerAddr, nil
 }
 
 type Network struct {
@@ -76,6 +90,9 @@ func (n *Network) AddNode() (*Node, error) {
 
   // Connect?
 
+  // we want realistic sim. lots of actions gated by 1-at-atime consesnus
+  d.SetWaitMining(false)
+
   node := &Node{
     Daemon: d,
     ID:     id,
@@ -91,6 +108,7 @@ func (n *Network) AddNode() (*Node, error) {
   if err == nil {
     node.sl.WriteEvent(logs.NetworkChurnEvent(addr, "Miner", true))
   }
+  node.WalletAddr = addr
 
   fmt.Println("added a new node to the network:", node.ID)
   return node, nil

@@ -48,12 +48,14 @@ func (r *Randomizer) periodic(ctx context.Context, t time.Duration, periodicFunc
 }
 
 func (r *Randomizer) addAndRemoveMiners(ctx context.Context) {
-  r.periodic(ctx, 2 * r.BlockTime, func(ctx context.Context) {
-    size := r.Net.Size()
-    if size < r.TotalNodes {
-      _, err := r.Net.AddNode()
-      logErr(err)
-    }
+  r.periodic(ctx, r.BlockTime * 3, func(ctx context.Context) {
+    go func() {
+      size := r.Net.Size()
+      if size < r.TotalNodes {
+        _, err := r.Net.AddNode()
+        logErr(err)
+      }
+    }()
   })
 }
 
@@ -78,52 +80,75 @@ func (r *Randomizer) randomActions(ctx context.Context) {
 }
 
 func (r *Randomizer) doRandomAction(ctx context.Context, a Action) {
-  nds := r.Net.GetRandomNodes(2)
-  if len(nds) < 2 || nds[0] == nil {
-    log.Print("not enough nodes for random actions")
-    return
-  }
 
   switch a {
   case ActionPayment:
-    var amtToSend = 5
-
-    log.Print("Trying to send payment.")
-    if nds[1] == nil {
-      log.Print("Nil node.")
-      return
-    }
-    a1, err1 := nds[0].Daemon.GetMainWalletAddress()
-    a2, err2 := nds[1].Daemon.GetMainWalletAddress()
-    logErr(err1)
-    logErr(err2)
-    if a1 == "" || a2 == "" {
-      log.Print("could not get wallet addresses.", a1, a2, err1, err2)
-      return
-    }
-
-    // ensure source has balance first. if doesn't, it wont work.
-    bal, err := nds[0].Daemon.GetBalance(a1)
-    if err != nil {
-      log.Print("could not get balance for address: ", a1)
-      return
-    }
-    if bal < amtToSend {
-      log.Printf("not enough money in address: %s %d", a1, bal)
-      return
-    }
-
-    // if does not succeed in 3 block times, it's hung on an error
-    // ctx, _ := context.WithTimeout(ctx, r.BlockTime * 3)
-    logErr(nds[0].Daemon.SendFilecoin(ctx, a1, a2, amtToSend))
-    return
+    r.doActionPayment(ctx)
 
   case ActionAsk:
+    r.doActionAsk(ctx)
   case ActionBid:
   case ActionDeal:
   case ActionSendFile:
   }
 }
+
+func (r *Randomizer) doActionPayment(ctx context.Context) {
+  var amtToSend = 5
+  nds := r.Net.GetRandomNodes(2)
+  if len(nds) < 2 || nds[0] == nil || nds[1] == nil {
+    log.Print("not enough nodes for random actions")
+    return
+  }
+
+  log.Print("Trying to send payment.")
+  a1, err1 := nds[0].Daemon.GetMainWalletAddress()
+  a2, err2 := nds[1].Daemon.GetMainWalletAddress()
+  logErr(err1)
+  logErr(err2)
+  if a1 == "" || a2 == "" {
+    log.Print("could not get wallet addresses.", a1, a2, err1, err2)
+    return
+  }
+
+  // ensure source has balance first. if doesn't, it wont work.
+  bal, err := nds[0].Daemon.WalletBalance(a1)
+  if err != nil {
+    log.Print("could not get balance for address: ", a1)
+    return
+  }
+  if bal < amtToSend {
+    log.Printf("not enough money in address: %s %d", a1, bal)
+    return
+  }
+
+  // if does not succeed in 3 block times, it's hung on an error
+  ctx, _ = context.WithTimeout(ctx, r.BlockTime * 3)
+  logErr(nds[0].Daemon.SendFilecoin(ctx, a1, a2, amtToSend))
+  return
+}
+
+func (r *Randomizer) doActionAsk(ctx context.Context) {
+  var size = 2048 + rand.Intn(2048)
+  var price = rand.Intn(30)
+
+  nd := r.Net.GetRandomNode()
+  if nd == nil {
+    return
+  }
+
+  // ensure they have a miner addrss associated with them.
+  from, err := nd.MinerIdentity()
+  if err != nil {
+    logErr(err)
+    return
+  }
+
+  logErr(nd.Daemon.MinerAddAsk(ctx, from, size, price))
+  return
+}
+
+
 
 func logErr(err error) {
   if err != nil {

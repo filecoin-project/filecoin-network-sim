@@ -110,8 +110,10 @@ func (td *Daemon) CreateMinerAddr() (types.Address, error) {
   var minerAddr types.Address
 
   // need money
-  if err := td.MiningOnce(); err != nil {
-    return minerAddr, err
+  if td.WaitMining() { // if disabled, skip (for realistic network sim)
+    if err := td.MiningOnce(); err != nil {
+      return minerAddr, err
+    }
   }
 
   miner, err := td.Run("miner", "create", "1000000", "1000")
@@ -155,7 +157,10 @@ func (td *Daemon) MineForMessage(ctx context.Context, msg string) (*Output, erro
     close(wait)
   }()
 
-  _, mineErr := td.Run("mining", "once")
+  var mineErr error
+  if td.WaitMining() { // if disabled, skip (for realistic network sim)
+    mineErr = td.MiningOnce()
+  }
 
   <-wait
 
@@ -236,7 +241,7 @@ func (td *Daemon) SendFilecoin(ctx context.Context, from, to string, amt int) er
   return err
 }
 
-func (td *Daemon) GetBalance(addr string) (int, error) {
+func (td *Daemon) WalletBalance(addr string) (int, error) {
   out, err := td.Run("wallet", "balance", addr)
   if err != nil {
     return 0, err
@@ -247,4 +252,20 @@ func (td *Daemon) GetBalance(addr string) (int, error) {
     return balance, err
   }
   return balance, err
+}
+
+func (td *Daemon) MinerAddAsk(ctx context.Context, from string, size, price int) error {
+  out, err := td.Run("miner", "add-ask", from,
+    strconv.Itoa(size), strconv.Itoa(price))
+  if err != nil {
+    return err
+  }
+
+  cid, err := cid.Parse(strings.Trim(out.ReadStdout(), "\n"))
+  if err != nil {
+    return err
+  }
+
+  _, err = td.MineForMessage(ctx, cid.String())
+  return err
 }
