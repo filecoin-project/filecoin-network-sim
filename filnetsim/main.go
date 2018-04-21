@@ -53,6 +53,7 @@ func SetupNetwork() *Instance {
     Actions:    []network.Action{
       network.ActionPayment,
       network.ActionAsk,
+      network.ActionBid,
     },
   }
 

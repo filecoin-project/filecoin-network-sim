@@ -82,12 +82,9 @@ func (r *Randomizer) randomActions(ctx context.Context) {
 func (r *Randomizer) doRandomAction(ctx context.Context, a Action) {
 
   switch a {
-  case ActionPayment:
-    r.doActionPayment(ctx)
-
-  case ActionAsk:
-    r.doActionAsk(ctx)
-  case ActionBid:
+  case ActionPayment:  r.doActionPayment(ctx)
+  case ActionAsk:      r.doActionAsk(ctx)
+  case ActionBid:      r.doActionBid(ctx)
   case ActionDeal:
   case ActionSendFile:
   }
@@ -148,6 +145,26 @@ func (r *Randomizer) doActionAsk(ctx context.Context) {
   return
 }
 
+
+func (r *Randomizer) doActionBid(ctx context.Context) {
+  var size = 2048 + rand.Intn(2048)
+  var price = rand.Intn(30)
+
+  nd := r.Net.GetRandomNode()
+  if nd == nil {
+    return
+  }
+
+  // ensure they have an addr they can bid from
+  from, err := nd.Daemon.GetMainWalletAddress()
+  if err != nil {
+    logErr(err)
+    return
+  }
+
+  logErr(nd.Daemon.ClientAddBid(ctx, from, size, price))
+  return
+}
 
 
 func logErr(err error) {
