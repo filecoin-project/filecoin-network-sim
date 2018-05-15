@@ -12,7 +12,6 @@ import (
   "flag"
 
   network "github.com/filecoin-project/filecoin-network-sim/network"
-  daemon "github.com/filecoin-project/filecoin-network-sim/daemon"
 )
 
 const (
