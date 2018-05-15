@@ -12,8 +12,10 @@ runDebug: build deps
 	open http://127.0.0.1:7002/
 	filnetsim/filnetsim --debug
 
-deps: submodules
-	@scripts/check-deps.sh
+deps: submodules bin/go-filecoin
+
+bin/go-filecoin:
+	@bin/build-filecoin.sh
 
 submodules:
 	git submodule init
