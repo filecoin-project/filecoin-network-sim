@@ -23,7 +23,7 @@ var opts = struct {
 }{}
 
 func init() {
-  flag.BoolVar(&opts.Debug, "--debug", false, "turns on debug logging")
+  flag.BoolVar(&opts.Debug, "debug", false, "turns on debug logging")
   flag.Parse()
 }
 
@@ -65,7 +65,7 @@ func (i *Instance) Run(ctx context.Context) {
 }
 
 
-func runService(ctx context.Context) {
+func runService(ctx context.Context) error {
   i := SetupInstance()
   // s.logs = i.L
   ctx, cancel := context.WithCancel(ctx)
@@ -81,10 +81,10 @@ func runService(ctx context.Context) {
 
   // run http
   fmt.Println("Listening at 127.0.0.1:7002/logs")
-  log.Fatal(http.ListenAndServe(":7002", nil))
+  return http.ListenAndServe(":7002", nil)
 }
 
-func main() {
+func run() error {
 
   // handle options
   if opts.Debug {
@@ -95,9 +95,15 @@ func main() {
 
   // check we're being run from a dir with filecoin-network-viz
   if _, err := os.Stat(VizDir); err != nil {
-    log.Fatalf("must be run from directory with %s\n", VizDir)
-    return
+    return fmt.Errorf("must be run from directory with %s\n", VizDir)
   }
 
-  runService(context.Background())
+  return runService(context.Background())
+}
+
+func main() {
+  if err := run(); err != nil {
+    fmt.Fprintf(os.Stderr, "error: %s\n", err)
+    os.Exit(1)
+  }
 }
