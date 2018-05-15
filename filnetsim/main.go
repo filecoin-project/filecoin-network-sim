@@ -12,6 +12,7 @@ import (
   "flag"
 
   network "github.com/filecoin-project/filecoin-network-sim/network"
+  daemon "github.com/filecoin-project/filecoin-network-sim/daemon"
 )
 
 const (
@@ -33,13 +34,17 @@ type Instance struct {
   L io.Reader
 }
 
-func SetupInstance() *Instance {
+func SetupInstance() (*Instance, error) {
   dir, err := ioutil.TempDir("", "filnetsim")
   if err != nil {
     dir = "/tmp/filnetsim"
   }
 
-  n := network.NewNetwork(dir)
+  n, err := network.NewNetwork(dir)
+  if err != nil {
+    return nil, err
+  }
+
   r := network.Randomizer{
     Net:        n,
     TotalNodes: 30,
@@ -53,7 +58,7 @@ func SetupInstance() *Instance {
   }
 
   l := n.Logs().Reader()
-  return &Instance{n, r, l}
+  return &Instance{n, r, l}, nil
 }
 
 func (i *Instance) Run(ctx context.Context) {
@@ -66,7 +71,11 @@ func (i *Instance) Run(ctx context.Context) {
 
 
 func runService(ctx context.Context) error {
-  i := SetupInstance()
+  i, err := SetupInstance()
+  if err != nil {
+    return err
+  }
+
   // s.logs = i.L
   ctx, cancel := context.WithCancel(ctx)
   defer cancel()

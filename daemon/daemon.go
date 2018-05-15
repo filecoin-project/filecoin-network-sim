@@ -287,7 +287,10 @@ func tryAPICheck(td *Daemon) error {
 }
 
 func GetFilecoinBinary() (string, error) {
-  bin := filepath.FromSlash(fmt.Sprintf("%s/src/github.com/filecoin-project/go-filecoin/go-filecoin", os.Getenv("GOPATH")))
+  // binpath := fmt.Sprintf("%s/src/github.com/filecoin-project/go-filecoin/go-filecoin", os.Getenv("GOPATH"))
+  binpath := "bin/go-filecoin" // TODO: force using a local copy of go-filecoin until feat/filecoint-network-sim merges.
+
+  bin := filepath.FromSlash(binpath)
   _, err := os.Stat(bin)
   if err == nil {
     return bin, nil

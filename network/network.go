@@ -49,9 +49,13 @@ type Network struct {
   logs    *logs.LineAggregator
 }
 
-func NewNetwork(repoDir string) *Network {
+func NewNetwork(repoDir string) (*Network, error) {
   la := logs.NewLineAggregator()
-  return &Network{repoDir: repoDir, logs: la}
+
+  if _, err := daemon.GetFilecoinBinary(); err != nil {
+    return nil, err
+  }
+  return &Network{repoDir: repoDir, logs: la}, nil
 }
 
 func (n *Network) Size() int {
