@@ -15,6 +15,6 @@ runDebug: build deps
 deps: submodules
 	@scripts/check-deps.sh
 
-submodules: filecoin-network-viz
+submodules:
 	git submodule init
 	git submodule update
