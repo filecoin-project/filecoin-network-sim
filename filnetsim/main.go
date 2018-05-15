@@ -11,7 +11,11 @@ import (
   "time"
   "flag"
 
-  network "github.com/filecoin-project/filnetsim/network"
+  network "github.com/filecoin-project/filecoin-network-sim/network"
+)
+
+const (
+  VizDir = "./filecoin-network-viz/viz-circle"
 )
 
 var opts = struct {
@@ -71,7 +75,7 @@ func runService(ctx context.Context) {
   lh := NewLogHandler(ctx, i.L)
 
   // setup http
-  http.Handle("/", http.FileServer(http.Dir("./filecoin-network-viz/viz-circle")))
+  http.Handle("/", http.FileServer(http.Dir(VizDir)))
   http.HandleFunc("/logs", lh.HandleHttp)
   // http.HandleFunc("/restart", RestartHandler)
 
@@ -87,6 +91,12 @@ func main() {
     log.SetOutput(os.Stderr)
   } else {
     log.SetOutput(ioutil.Discard)
+  }
+
+  // check we're being run from a dir with filecoin-network-viz
+  if _, err := os.Stat(VizDir); err != nil {
+    log.Fatalf("must be run from directory with %s\n", VizDir)
+    return
   }
 
   runService(context.Background())

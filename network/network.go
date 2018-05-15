@@ -6,8 +6,8 @@ import (
   "path/filepath"
   "math/rand"
 
-  daemon "github.com/filecoin-project/filnetsim/daemon"
-  logs "github.com/filecoin-project/filnetsim/logs"
+  daemon "github.com/filecoin-project/filecoin-network-sim/daemon"
+  logs "github.com/filecoin-project/filecoin-network-sim/logs"
 )
 
 
