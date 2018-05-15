@@ -48,7 +48,7 @@ func (r *Randomizer) periodic(ctx context.Context, t time.Duration, periodicFunc
 }
 
 func (r *Randomizer) addAndRemoveMiners(ctx context.Context) {
-  r.periodic(ctx, r.BlockTime * 3, func(ctx context.Context) {
+  r.periodic(ctx, r.BlockTime * 4, func(ctx context.Context) {
     go func() {
       size := r.Net.Size()
       if size < r.TotalNodes {
@@ -73,7 +73,6 @@ func (r *Randomizer) mineBlocks(ctx context.Context) {
 
 func (r *Randomizer) randomActions(ctx context.Context) {
   r.periodic(ctx, r.ActionTime, func(ctx context.Context) {
-
     action := r.Actions[rand.Intn(len(r.Actions))]
     go r.doRandomAction(ctx, action)
   })

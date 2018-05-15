@@ -4,13 +4,24 @@ import (
   "log"
   "context"
   "io"
+  "os"
   "fmt"
   "net/http"
   "io/ioutil"
   "time"
+  "flag"
 
   network "github.com/filecoin-project/filnetsim/network"
 )
+
+var opts = struct {
+  Debug bool
+}{}
+
+func init() {
+  flag.BoolVar(&opts.Debug, "--debug", false, "turns on debug logging")
+  flag.Parse()
+}
 
 type Instance struct {
   N *network.Network
@@ -27,9 +38,9 @@ func SetupInstance() *Instance {
   n := network.NewNetwork(dir)
   r := network.Randomizer{
     Net:        n,
-    TotalNodes: 10,
+    TotalNodes: 30,
     BlockTime:  2 * time.Second,
-    ActionTime: 500 * time.Millisecond,
+    ActionTime: 1000 * time.Millisecond,
     Actions:    []network.Action{
       network.ActionPayment,
       network.ActionAsk,
@@ -70,5 +81,13 @@ func runService(ctx context.Context) {
 }
 
 func main() {
+
+  // handle options
+  if opts.Debug {
+    log.SetOutput(os.Stderr)
+  } else {
+    log.SetOutput(ioutil.Discard)
+  }
+
   runService(context.Background())
 }
