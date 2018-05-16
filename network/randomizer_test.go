@@ -14,7 +14,8 @@ import (
 
 
 func TestRandomizer(t *testing.T) {
-  net := NewNetwork(TempDir(t))
+  net, err := NewNetwork(TempDir(t))
+  assert.NoError(t, err)
   defer net.ShutdownAll()
 
   buf := bytes.NewBuffer(nil)
@@ -22,8 +23,8 @@ func TestRandomizer(t *testing.T) {
 
   r := Randomizer{
     Net:        net,
-    TotalNodes: 20,
-    BlockTime:  500 * time.Millisecond,
+    TotalNodes: 30,
+    BlockTime:  100 * time.Millisecond,
     ActionTime: 100 * time.Millisecond,
     Actions:    []Action{
       ActionPayment,
@@ -47,6 +48,7 @@ func TestRandomizer(t *testing.T) {
   t.Log(counts)
   assert.True(t, counts["NewBlockMined"] > 1)
   assert.True(t, counts["MinerJoins"] > 1)
+  assert.True(t, counts["ClientJoins"] > 1)
   assert.True(t, counts["BroadcastBlock"] > 1)
   assert.True(t, counts["AddAsk"] > 1)
   assert.True(t, counts["SendPayment"] > 1)

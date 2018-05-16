@@ -2,10 +2,10 @@ package network
 
 import (
   "testing"
-  // "io"
+  "io"
   "io/ioutil"
-  // "bytes"
-  // "encoding/json"
+  "bytes"
+  "encoding/json"
 
   "github.com/stretchr/testify/assert"
 )
@@ -22,13 +22,13 @@ func TestNetworkAddNode(t *testing.T) {
   assert.NoError(t, err)
   defer net.ShutdownAll()
 
-  n1, err := net.AddNode()
+  n1, err := net.AddNode(AnyNodeType)
   assert.NoError(t, err)
 
-  n2, err := net.AddNode()
+  n2, err := net.AddNode(AnyNodeType)
   assert.NoError(t, err)
 
-  n3, err := net.AddNode()
+  n3, err := net.AddNode(AnyNodeType)
   assert.NoError(t, err)
 
   assert.True(t, n1 == net.GetNode(0))
@@ -42,7 +42,7 @@ func TestNetworkAddNodes(t *testing.T) {
   assert.NoError(t, err)
   defer net.ShutdownAll()
 
-  err := net.AddNodes(10)
+  err = net.AddNodes(AnyNodeType, 10)
   assert.NoError(t, err)
 }
 
@@ -54,11 +54,11 @@ func TestLogging(t *testing.T) {
   buf := bytes.NewBuffer(nil)
   go io.Copy(buf, net.Logs().Reader())
 
-  n1, err := net.AddNode()
+  n1, err := net.AddNode(MinerNodeType)
   assert.NoError(t, err)
-  n2, err := net.AddNode()
+  n2, err := net.AddNode(MinerNodeType)
   assert.NoError(t, err)
-  n3, err := net.AddNode()
+  n3, err := net.AddNode(MinerNodeType)
   assert.NoError(t, err)
 
   _, err = n1.Connect(n3.Daemon)
@@ -72,6 +72,9 @@ func TestLogging(t *testing.T) {
   // check logs
 
   check := []map[string]string{
+    {"type": "MinerJoins"},
+    {"type": "MinerJoins"},
+    {"type": "MinerJoins"},
     {"type": "Connected"},
     {"type": "NewBlockMined"},
     {"type": "BroadcastBlock"},
@@ -88,7 +91,7 @@ func TestLogging(t *testing.T) {
     assert.NoError(t, d.Decode(&m2))
 
     for k, v := range m1 {
-      assert.Equal(t, m2[k], v)
+      assert.Equal(t, v, m2[k])
     }
     t.Log(m2)
   }

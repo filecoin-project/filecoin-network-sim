@@ -288,7 +288,8 @@ func tryAPICheck(td *Daemon) error {
 
 func GetFilecoinBinary() (string, error) {
   // binpath := fmt.Sprintf("%s/src/github.com/filecoin-project/go-filecoin/go-filecoin", os.Getenv("GOPATH"))
-  binpath := "bin/go-filecoin" // TODO: force using a local copy of go-filecoin until feat/filecoint-network-sim merges.
+  // force using a local copy of go-filecoin until feat/filecoint-network-sim merges. (TODO)
+  binpath := fmt.Sprintf("%s/src/github.com/filecoin-project/filecoin-network-sim/bin/go-filecoin", os.Getenv("GOPATH"))
 
   bin := filepath.FromSlash(binpath)
   _, err := os.Stat(bin)

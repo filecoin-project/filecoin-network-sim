@@ -28,7 +28,7 @@ type Randomizer struct {
 }
 
 func (r *Randomizer) Run(ctx context.Context) {
-  go r.addAndRemoveMiners(ctx)
+  go r.addAndRemoveNodes(ctx)
   go r.mineBlocks(ctx)
   go r.randomActions(ctx)
 }
@@ -47,12 +47,12 @@ func (r *Randomizer) periodic(ctx context.Context, t time.Duration, periodicFunc
   }
 }
 
-func (r *Randomizer) addAndRemoveMiners(ctx context.Context) {
+func (r *Randomizer) addAndRemoveNodes(ctx context.Context) {
   r.periodic(ctx, r.BlockTime * 4, func(ctx context.Context) {
     go func() {
       size := r.Net.Size()
       if size < r.TotalNodes {
-        _, err := r.Net.AddNode()
+        _, err := r.Net.AddNode(AnyNodeType)
         logErr(err)
       }
     }()
@@ -61,7 +61,7 @@ func (r *Randomizer) addAndRemoveMiners(ctx context.Context) {
 
 func (r *Randomizer) mineBlocks(ctx context.Context) {
   r.periodic(ctx, r.BlockTime, func(ctx context.Context) {
-    n := r.Net.GetRandomNode()
+    n := r.Net.GetRandomNode(AnyNodeType)
     if n == nil {
       return
     }
@@ -90,7 +90,7 @@ func (r *Randomizer) doRandomAction(ctx context.Context, a Action) {
 
 func (r *Randomizer) doActionPayment(ctx context.Context) {
   var amtToSend = 5
-  nds := r.Net.GetRandomNodes(2)
+  nds := r.Net.GetRandomNodes(AnyNodeType, 2)
   if len(nds) < 2 || nds[0] == nil || nds[1] == nil {
     log.Print("not enough nodes for random actions")
     return
@@ -127,13 +127,13 @@ func (r *Randomizer) doActionAsk(ctx context.Context) {
   var size = 2048 + rand.Intn(2048)
   var price = rand.Intn(30)
 
-  nd := r.Net.GetRandomNode()
+  nd := r.Net.GetRandomNode(MinerNodeType)
   if nd == nil {
     return
   }
 
   // ensure they have a miner addrss associated with them.
-  from, err := nd.MinerIdentity()
+  from, err := nd.CreateOrGetMinerIdentity()
   if err != nil {
     logErr(err)
     return
@@ -148,7 +148,7 @@ func (r *Randomizer) doActionBid(ctx context.Context) {
   var size = 2048 + rand.Intn(2048)
   var price = rand.Intn(30)
 
-  nd := r.Net.GetRandomNode()
+  nd := r.Net.GetRandomNode(ClientNodeType)
   if nd == nil {
     return
   }

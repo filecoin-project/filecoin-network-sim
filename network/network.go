@@ -10,15 +10,50 @@ import (
   logs "github.com/filecoin-project/filecoin-network-sim/logs"
 )
 
+type NodeType string
+const (
+  MinerNodeType NodeType = "Miner"
+  ClientNodeType NodeType = "Client"
+  AnyNodeType NodeType = "Node"
+)
+
+func RandomNodeType() NodeType {
+  switch rand.Intn(2) {
+  case 1:
+    return MinerNodeType
+  default:
+    return ClientNodeType
+  }
+}
 
 // daemon + cached info
 type Node struct {
   *daemon.Daemon
 
+  Type       NodeType
   ID         string
-  WalletAddr string
+  WalletAddr string // ClientAddr
   MinerAddr  string
   sl *logs.SimLogger
+}
+
+func NewNode(d *daemon.Daemon, id string, t NodeType) (*Node, error) {
+  if t == AnyNodeType {
+    t = RandomNodeType()
+  }
+
+  addr, err := d.GetMainWalletAddress()
+  if err != nil {
+    return nil, err
+  }
+  n := &Node{
+    Daemon:     d,
+    ID:         id,
+    Type:       t,
+    WalletAddr: addr,
+  }
+
+  return n, nil
 }
 
 func (n *Node) Logs() *logs.SimLogger {
@@ -29,7 +64,11 @@ func (n *Node) Logs() *logs.SimLogger {
   return n.sl
 }
 
-func (n *Node) MinerIdentity() (string, error) {
+func (n *Node) HasMinerIdentity() bool {
+  return n.MinerAddr == ""
+}
+
+func (n *Node) CreateOrGetMinerIdentity() (string, error) {
   if n.MinerAddr == "" {
     a, err := n.CreateMinerAddr()
     if err != nil {
@@ -37,8 +76,11 @@ func (n *Node) MinerIdentity() (string, error) {
     }
     n.MinerAddr = a.String()
   }
-
   return n.MinerAddr, nil
+}
+
+func (n *Node) GetMinerIdentity() string {
+  return n.MinerAddr
 }
 
 type Network struct {
@@ -68,11 +110,11 @@ func (n *Network) Logs() *logs.LineAggregator {
   return n.logs
 }
 
-func (n *Network) AddNode() (*Node, error) {
+func (n *Network) tryCreatingNode(t NodeType) (*Node, error) {
   n.lk.Lock()
   repoNum := n.repoNum
   n.repoNum++
-  n.lk.Unlock()
+  n.lk.Unlock() // unlock to be able to set up the node w/o holding lock.
 
   d, err := daemon.NewDaemon(
     daemon.RepoDir(filepath.Join(n.repoDir, fmt.Sprintf("node%d", repoNum))),
@@ -92,35 +134,45 @@ func (n *Network) AddNode() (*Node, error) {
     return nil, err
   }
 
-  // Connect?
-
-  // we want realistic sim. lots of actions gated by 1-at-atime consesnus
-  d.SetWaitMining(false)
-
-  node := &Node{
-    Daemon: d,
-    ID:     id,
+  node, err := NewNode(d, id, t)
+  if err != nil {
+    d.Shutdown()
+    return nil, err
   }
 
+  return node, nil
+}
+
+func (n *Network) AddNode(t NodeType) (*Node, error) {
+  node, err := n.tryCreatingNode(t)
+  if err != nil {
+    return nil, err
+  }
+  // ok from here, we have a node, and it should work out.
+
+  // connect to other miners?
+  // TODO
+
+  // we want realistic sim. lots of actions gated by 1-at-atime consesnus
+  node.Daemon.SetWaitMining(false)
+
+  // add miner to our list.
   n.lk.Lock()
   n.nodes = append(n.nodes, node)
   n.lk.Unlock()
 
   n.logs.MixReader(node.Logs().Reader())
 
-  addr, err := d.GetMainWalletAddress()
-  if err == nil {
-    node.sl.WriteEvent(logs.NetworkChurnEvent(addr, "Miner", true))
-  }
-  node.WalletAddr = addr
+  // announce the miner to logs
+  node.Logs().WriteEvent(logs.NetworkChurnEvent(node.WalletAddr, string(node.Type), true))
 
   fmt.Println("added a new node to the network:", node.ID)
   return node, nil
 }
 
-func (n *Network) AddNodes(num int) error {
+func (n *Network) AddNodes(t NodeType, num int) error {
   errs := AsyncErrs(num, func(i int) error {
-    _, err := n.AddNode()
+    _, err := n.AddNode(t)
     return err
   })
 
@@ -178,30 +230,47 @@ func (n *Network) GetNodeByID(id string) *Node {
   return nil
 }
 
-func (n *Network) GetRandomNode() *Node {
+// should be called with lock held
+func (n *Network) GetNodesOfType(t NodeType) []*Node {
   n.lk.Lock()
   defer n.lk.Unlock()
 
-  l := len(n.nodes)
+  var nodes []*Node
+  for _, node := range n.nodes {
+    if t == AnyNodeType || node.Type == t {
+      nodes = append(nodes, node)
+    }
+  }
+  return nodes
+}
+
+func (n *Network) GetRandomNode(t NodeType) *Node {
+  nodes := n.GetNodesOfType(t)
+
+  l := len(nodes)
   if l == 0 {
     return nil
   }
 
-  return n.nodes[rand.Intn(l)]
+  return nodes[rand.Intn(l)]
 }
 
-func (n *Network) GetRandomNodes(num int) []*Node {
-  n.lk.Lock()
-  defer n.lk.Unlock()
+func (n *Network) GetRandomNodes(t NodeType, num int) []*Node {
+  nodes := n.GetNodesOfType(t)
 
-  if len(n.nodes) < num {
+  l := len(nodes)
+  if l == 0 {
+    return nil
+  }
+
+  if len(nodes) < num {
     return nil
   }
 
   // use a set to sample different nodes.
   nodeSet := map[*Node]struct{}{}
   for len(nodeSet) < num {
-    nd := n.nodes[rand.Intn(len(n.nodes))]
+    nd := nodes[rand.Intn(len(nodes))]
     nodeSet[nd] = struct{}{}
   }
 
