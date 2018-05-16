@@ -96,6 +96,7 @@ func (l *SimLogger) convertEL2SL(el map[string]interface{}) []map[string]interfa
     e1["type"] = "NewBlockMined"
     e1["to"] = "all"
     e1["block"] = getStrSafe(tags, "block")
+    e1["reward"] = "1000"
 
     e2 := newSimEvent(l.id)
     e2["type"] = "BroadcastBlock"
