@@ -5,7 +5,9 @@ Server for https://github.com/filecoin-project/filecoin-network-viz
 ## Setup
 
 ```
-go get github.com/filecoin-project/filecoin-network-sim
+cd $GOPATH/src/github.com/filecoin-project/
+git clone git@github.com:filecoin-project/filecoin-network-sim.git
+
 cd $GOPATH/src/github.com/filecoin-project/filecoin-network-sim
 make deps
 make
