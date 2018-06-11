@@ -3,6 +3,8 @@ package logs
 import (
 	"encoding/json"
 	"io"
+
+	"github.com/filecoin-project/go-filecoin/types"
 )
 
 type SimLogger struct {
@@ -92,34 +94,54 @@ func (l *SimLogger) convertEL2SL(el map[string]interface{}) []map[string]interfa
 
 	switch op {
 	case "AddNewBlock": // NewBlockMined, BroadcastBlock
+		block := getBlockFromTags(tags)
+
 		e1 := newSimEvent(l.id)
 		e1["type"] = "NewBlockMined"
 		e1["to"] = "all"
-		e1["block"] = getStrSafe(tags, "block")
 		e1["reward"] = "1000"
+		e1["block"] = tags["block"]
+		e1["from"] = block.Miner.String()
 
 		e2 := newSimEvent(l.id)
 		e2["type"] = "BroadcastBlock"
 		e2["to"] = "all"
-		e2["block"] = getStrSafe(tags, "block")
+		e2["block"] = tags["block"]
+		e2["from"] = block.Miner.String()
 		return joinSimEvent(e1, e2)
 
 	case "minerAddAskCmd": // AddAsk
 		e := newSimEvent(l.id)
 		e["type"] = "AddAsk"
 		e["to"] = "all"
-		e["txid"] = getStrSafe(tags, "msg")
+
+		// from the command args
 		e["price"] = getStrSafe(tags, "price")
 		e["size"] = getStrSafe(tags, "size")
+
+		// extrace the message and its cid
+		message := getMsgFromTags(tags)
+		msgID, _ := message.Cid()
+
+		e["from"] = message.From.String()
+		e["txid"] = msgID.String()
 		return joinSimEvent(e)
 
 	case "clientAddBidCmd": // AddBid
 		e := newSimEvent(l.id)
 		e["type"] = "AddBid"
 		e["to"] = "all"
-		e["txid"] = getStrSafe(tags, "msg")
+
+		// from the command args
 		e["price"] = getStrSafe(tags, "price")
 		e["size"] = getStrSafe(tags, "size")
+
+		// extract the message and cid
+		message := getMsgFromTags(tags)
+		msgID, _ := message.Cid()
+
+		e["from"] = message.From.String()
+		e["txid"] = msgID.String()
 		return joinSimEvent(e)
 
 	case "ProposeDealHandler":
@@ -175,6 +197,32 @@ func (l *SimLogger) convertEL2SL(el map[string]interface{}) []map[string]interfa
 		return nil // unused.
 	}
 }
+
+func getBlockFromTags(tags map[string]interface{}) types.Block {
+	var block types.Block
+	blk, err := json.Marshal(tags["block"])
+	if err != nil {
+		panic(err)
+	}
+	if err = json.Unmarshal(blk, &block); err != nil {
+		panic(err)
+	}
+	return block
+}
+
+func getMsgFromTags(tags map[string]interface{}) types.Message {
+	var message types.Message
+	msg, err := json.Marshal(tags["message"])
+	if err != nil {
+		panic(err)
+	}
+	if err = json.Unmarshal(msg, &message); err != nil {
+		panic(err)
+	}
+	return message
+}
+
+// NONE OF THIS IS SAFE OMG
 
 func getStrSafe(m map[string]interface{}, k string) string {
 	v, _ := m[k].(string)
