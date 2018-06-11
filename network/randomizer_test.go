@@ -1,71 +1,69 @@
 package network
 
 import (
-  "testing"
-  "io"
-  "bytes"
-  "encoding/json"
-  "time"
-  "context"
+	"bytes"
+	"context"
+	"encoding/json"
+	"io"
+	"testing"
+	"time"
 
-  "github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/assert"
 )
 
-
-
 func TestRandomizer(t *testing.T) {
-  net, err := NewNetwork(TempDir(t))
-  assert.NoError(t, err)
-  defer net.ShutdownAll()
+	net, err := NewNetwork(TempDir(t))
+	assert.NoError(t, err)
+	defer net.ShutdownAll()
 
-  buf := bytes.NewBuffer(nil)
-  go io.Copy(buf, net.Logs().Reader())
+	buf := bytes.NewBuffer(nil)
+	go io.Copy(buf, net.Logs().Reader())
 
-  r := Randomizer{
-    Net:        net,
-    TotalNodes: 30,
-    BlockTime:  100 * time.Millisecond,
-    ActionTime: 100 * time.Millisecond,
-    Actions:    []Action{
-      ActionPayment,
-      ActionAsk,
-      ActionBid,
-    },
-  }
+	r := Randomizer{
+		Net:        net,
+		TotalNodes: 30,
+		BlockTime:  100 * time.Millisecond,
+		ActionTime: 100 * time.Millisecond,
+		Actions: []Action{
+			ActionPayment,
+			ActionAsk,
+			ActionBid,
+		},
+	}
 
-  ctx, cancel := context.WithCancel(context.Background())
-  r.Run(ctx)
+	ctx, cancel := context.WithCancel(context.Background())
+	r.Run(ctx)
 
-  runDuration := 5 * time.Second
-  time.Sleep(runDuration)
-  cancel()
-  time.Sleep(time.Second)
-  // wait till done. want goprocess.
+	runDuration := 5 * time.Second
+	time.Sleep(runDuration)
+	cancel()
+	time.Sleep(time.Second)
+	// wait till done. want goprocess.
 
-  // s := string(buf.Bytes())
-  // rd := bytes.NewBuffer([]byte(s))
-  counts := CountLogs(t, buf)
-  t.Log(counts)
-  assert.True(t, counts["NewBlockMined"] > 1)
-  assert.True(t, counts["MinerJoins"] > 1)
-  assert.True(t, counts["ClientJoins"] > 1)
-  assert.True(t, counts["BroadcastBlock"] > 1)
-  assert.True(t, counts["AddAsk"] > 1)
-  assert.True(t, counts["SendPayment"] > 1)
+	// s := string(buf.Bytes())
+	// rd := bytes.NewBuffer([]byte(s))
+	counts := CountLogs(t, buf)
+	t.Log(counts)
+	assert.True(t, counts["NewBlockMined"] > 1)
+	assert.True(t, counts["MinerJoins"] > 1)
+	assert.True(t, counts["ClientJoins"] > 1)
+	assert.True(t, counts["BroadcastBlock"] > 1)
+	assert.True(t, counts["AddAsk"] > 1)
+	assert.True(t, counts["SendPayment"] > 1)
 }
 
 func CountLogs(t *testing.T, r io.Reader) map[string]int {
-  counts := map[string]int{}
-  d := json.NewDecoder(r)
-  for {
-    var m map[string]interface{}
-    err := d.Decode(&m)
-    if err != nil {
-      break
-    }
+	counts := map[string]int{}
+	d := json.NewDecoder(r)
+	for {
+		var m map[string]interface{}
+		err := d.Decode(&m)
+		if err != nil {
+			break
+		}
 
-    t := m["type"].(string)
-    counts[t] = counts[t] + 1
-  }
-  return counts
+		t := m["type"].(string)
+		counts[t] = counts[t] + 1
+	}
+	return counts
 }
