@@ -8,11 +8,9 @@ test:
 	go test ./...
 
 run: build
-	open http://127.0.0.1:7002/
 	filnetsim/filnetsim
 
 runDebug: build deps
-	open http://127.0.0.1:7002/
 	filnetsim/filnetsim --debug
 
 deps: submodules bin/go-filecoin
