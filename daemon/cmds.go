@@ -3,7 +3,6 @@ package daemon
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
 	"strconv"
@@ -11,8 +10,13 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/types"
 
+	errors "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 )
+
+func (td *Daemon) Log(msg ...string) {
+	fmt.Printf("[%s] - %s\n", td.cmdAddr, msg)
+}
 
 func (td *Daemon) GetID() (string, error) {
 	out, err := td.Run("id")
@@ -104,40 +108,31 @@ func (td *Daemon) MiningOnce() error {
 // CreateMinerAddr issues a new message to the network, mines the message
 // and returns the address of the new miner
 // equivalent to:
+//     `export TEST_ACCOUNT="fcqguttqgahl6ztde7umgcrc0t4fvdgluhus0sz4w"`
 //     `go-filecoin miner create --from $TEST_ACCOUNT 100000 20`
 func (td *Daemon) CreateMinerAddr() (types.Address, error) {
 	var minerAddr types.Address
 
-	// need money
-	if td.WaitMining() { // if disabled, skip (for realistic network sim)
-		if err := td.MiningOnce(); err != nil {
-			return minerAddr, err
+	/*
+		// need money
+		if td.WaitMining() { // if disabled, skip (for realistic network sim)
+			if err := td.MiningOnce(); err != nil {
+				return minerAddr, err
+			}
 		}
-	}
+	*/
 
-	miner, err := td.Run("miner", "create", "1000000", "1000")
+	// start and stop is hacky TODO
+	td.Run("mining", "start")
+	miner, err := td.Run("miner", "create", "--from", "fcqguttqgahl6ztde7umgcrc0t4fvdgluhus0sz4w", "1000000", "1000")
 	if err != nil {
-		return minerAddr, err
+		return minerAddr, errors.Wrap(err, "failed to run miner create command")
 	}
+	td.Run("mining", "stop")
 
-	minerMessageCid, err := cid.Parse(strings.Trim(miner.ReadStdout(), "\n"))
+	addr, err := types.NewAddressFromString(strings.Trim(miner.ReadStdout(), "\n"))
 	if err != nil {
-		return minerAddr, err
-	}
-
-	wait, err := td.MineForMessage(context.TODO(), minerMessageCid.String())
-	if err != nil {
-		return minerAddr, err
-	}
-
-	addr, err := types.NewAddressFromString(strings.Trim(wait.ReadStdout(), "\n"))
-	if err != nil {
-		return addr, err
-	}
-
-	emptyAddr := types.Address{}
-	if emptyAddr == addr {
-		return addr, errors.New("got empty address")
+		return types.Address{}, err
 	}
 
 	return addr, nil

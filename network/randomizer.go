@@ -167,6 +167,6 @@ func (r *Randomizer) doActionBid(ctx context.Context) {
 
 func logErr(err error) {
 	if err != nil {
-		log.Print(err)
+		panic(err)
 	}
 }

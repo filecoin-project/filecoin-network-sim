@@ -170,6 +170,9 @@ func (td *Daemon) RunWithStdin(stdin io.Reader, args ...string) (*Output, error)
 		err = errors.New("command failed")
 	}
 
+	fmt.Printf("STDOUT: %s", string(stdoutBytes[:]))
+	fmt.Printf("STDERR: %s", string(stderrBytes[:]))
+
 	return o, err
 }
 

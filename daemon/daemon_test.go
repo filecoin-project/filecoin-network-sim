@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type TestDaemon struct {
@@ -71,6 +72,47 @@ func TestSwarmConnectPeers(t *testing.T) {
 
 	_, err = d3.Connect(d4.Daemon)
 	assert.NoError(t, err)
+}
+
+func TestMinerCreateAddr(t *testing.T) {
+	require := require.New(t)
+
+	d1 := NewTestDaemon(t, SwarmAddr("/ip4/127.0.0.1/tcp/6000")).Start()
+	defer d1.ShutdownSuccess()
+
+	d2 := NewTestDaemon(t, SwarmAddr("/ip4/127.0.0.1/tcp/6001")).Start()
+	defer d2.ShutdownSuccess()
+
+	_, err := d1.Connect(d2.Daemon)
+	require.NoError(err)
+
+	w1Addr, err := d1.CreateWalletAddr()
+	require.NoError(err)
+	require.NotEmpty(w1Addr)
+
+	w2Addr, err := d2.CreateWalletAddr()
+	require.NoError(err)
+	require.NotEmpty(w2Addr)
+
+	require.NoError(d1.MiningOnce())
+	require.NoError(d1.MiningOnce())
+	require.NoError(d2.MiningOnce())
+	require.NoError(d2.MiningOnce())
+
+	m1Addr, err := d1.CreateMinerAddr()
+	if err != nil {
+		d1.Shutdown()
+		d2.Shutdown()
+		t.Log(d1.ReadStderr())
+		t.Log(d1.ReadStdout())
+	}
+	require.NoError(err)
+	require.NotEmpty(m1Addr)
+
+	m2Addr, err := d2.CreateMinerAddr()
+	require.NoError(err)
+	require.NotEmpty(m2Addr)
+
 }
 
 func TestDaemonEventLogs(t *testing.T) {
