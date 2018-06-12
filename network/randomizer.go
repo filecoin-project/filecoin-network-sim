@@ -52,7 +52,11 @@ func (r *Randomizer) addAndRemoveNodes(ctx context.Context) {
     go func() {
       size := r.Net.Size()
       if size < r.TotalNodes {
-        _, err := r.Net.AddNode(AnyNodeType)
+        t := AnyNodeType
+        if size < 2 {
+          t = MinerNodeType
+        }
+        _, err := r.Net.AddNode(t)
         logErr(err)
       }
     }()
