@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"sync"
 
-	daemon "github.com/filecoin-project/filecoin-network-sim/daemon"
 	logs "github.com/filecoin-project/filecoin-network-sim/logs"
+	daemon "github.com/filecoin-project/go-filecoin/testhelpers"
 )
 
 type NodeType string
@@ -167,7 +167,7 @@ func (n *Network) AddNode(t NodeType) (*Node, error) {
 	// announce the miner to logs
 	node.Logs().WriteEvent(logs.NetworkChurnEvent(node.WalletAddr, string(node.Type), true))
 
-	fmt.Println("added a new node to the network:", node.ID)
+	fmt.Printf("[NET]\tadded a new node to the network: %s\n", node.ID)
 	return node, nil
 }
 
@@ -178,7 +178,7 @@ func (n *Network) AddNodes(t NodeType, num int) error {
 	})
 
 	if len(errs) > 0 {
-		return fmt.Errorf("adding %d/%d failed", len(errs), num)
+		return fmt.Errorf("[NET]\tadding %d/%d failed\n", len(errs), num)
 	}
 	return nil
 }
@@ -203,7 +203,7 @@ func (n *Network) ConnectNodeToAll(node *Node) error {
 	}
 
 	if failed > 0 {
-		return fmt.Errorf("failed to connect %d/%d", failed, len(conn))
+		return fmt.Errorf("[NET]\tfailed to connect %d/%d\n", failed, len(conn))
 	}
 	return nil
 }
@@ -293,7 +293,7 @@ func (n *Network) ShutdownAll() error {
 
 	var err error
 	if len(errs) > 0 {
-		err = fmt.Errorf("shutting down %d/%d failed", len(errs), len(n.nodes))
+		err = fmt.Errorf("[NET]\tshutting down %d/%d failed\n", len(errs), len(n.nodes))
 	}
 	return err
 }

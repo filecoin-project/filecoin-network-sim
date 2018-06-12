@@ -11,7 +11,7 @@ which go >/dev/null || die "please install go: https://golang.org/dl"
 # check go filecoin is on the right branch
 gf_pkg="github.com/filecoin-project/go-filecoin"
 gf_dir="$GOPATH/src/$gf_pkg"
-gf_branch_exp="demo/network-simulation"
+gf_branch_exp="feat/extractTestDaemon"
 gf_branch_act=$(git -C "$gf_dir" rev-parse --abbrev-ref HEAD)
 if [ "$gf_branch_exp" != "$gf_branch_act" ]; then
   echo 2> "using go-filecoin at $gf_pkg"

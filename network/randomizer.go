@@ -2,6 +2,7 @@ package network
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"math/rand"
 	"time"
@@ -167,6 +168,6 @@ func (r *Randomizer) doActionBid(ctx context.Context) {
 
 func logErr(err error) {
 	if err != nil {
-		panic(err)
+		fmt.Errorf("[RAND]\t ERROR: %s\n", err.Error())
 	}
 }
