@@ -230,6 +230,7 @@ func (l *SimLogger) convertEL2SL(el map[string]interface{}) []map[string]interfa
 
 	case "AddNewMessage":
 		message := getMsgFromTags(tags)
+		l.Logf("FORREST MESSAGE: %v", message)
 
 		switch message.Method {
 		case "": // SendPayment
