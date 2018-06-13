@@ -54,6 +54,11 @@ func NewNode(d *daemon.Daemon, id string, t NodeType) (*Node, error) {
 		WalletAddr: addr,
 	}
 
+	// All nodes must mine at least once to participate
+	if err := n.MiningOnce(); err != nil {
+		return nil, err
+	}
+
 	return n, nil
 }
 

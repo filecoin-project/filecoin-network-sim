@@ -97,6 +97,12 @@ func (l *SimLogger) convertEL2SL(el map[string]interface{}) []map[string]interfa
 		return nil // everything we use has tags.
 	}
 
+	_, ok = tags["error"]
+	if ok {
+		l.Logf("ERROR IN EVENT LOG: %v", el)
+		return nil
+	}
+
 	switch op {
 	case "AddNewBlock": // NewBlockMined, BroadcastBlock
 		block := getBlockFromTags(tags)
@@ -158,7 +164,7 @@ func (l *SimLogger) convertEL2SL(el map[string]interface{}) []map[string]interfa
 		message := getMsgFromTags(tags)
 		msgID, err := message.Cid()
 		if err != nil {
-			panic(err) // would mean there is sever bug or message is nil
+			panic(err) // developer error
 		}
 
 		e := newSimEvent(l.id)
@@ -183,7 +189,7 @@ func (l *SimLogger) convertEL2SL(el map[string]interface{}) []map[string]interfa
 		e["to"] = "all"
 		e["price"] = getStrSafe(tags, "price")
 		e["size"] = getStrSafe(tags, "size")
-		e["from"] = tags["from-address"]
+		e["from"] = message.From.String()
 		e["txid"] = msgID.String()
 		return joinSimEvent(e)
 
@@ -264,7 +270,6 @@ func getMsgFromTags(tags map[string]interface{}) types.Message {
 	if err = json.Unmarshal(msg, &message); err != nil {
 		panic(err)
 	}
-	fmt.Printf("\nFORREST MESSAGE METHOD: %s\n", message.Method)
 	return message
 }
 
