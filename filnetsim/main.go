@@ -15,7 +15,8 @@ import (
 )
 
 const (
-	VizDir = "./filecoin-network-viz/viz-circle"
+	VizDir      = "./filecoin-network-viz/viz-circle"
+	ExplorerDir = "./filecoin-explorer/dist"
 )
 
 var opts = struct {
@@ -83,6 +84,7 @@ func runService(ctx context.Context) error {
 
 	// setup http
 	http.Handle("/", http.FileServer(http.Dir(VizDir)))
+	http.Handle("/explorer", http.FileServer(http.Dir(ExplorerDir)))
 	http.HandleFunc("/logs", lh.HandleHttp)
 	// http.HandleFunc("/restart", RestartHandler)
 
