@@ -116,6 +116,44 @@ func (l *SimLogger) convertEL2SL(el map[string]interface{}) []map[string]interfa
 
 		return joinSimEvent(e1, e2)
 
+	case "ProcessNewBlock": //SawBlock
+		block := getBlockFromTags(tags)
+
+		e := newSimEvent(l.id)
+		e["type"] = "SawBlock"
+		e["block"] = block.Cid().String()
+		e["from"] = block.Miner.String()
+		//TODO a "to" field doesn't make sense here does it? I don't tell peers about all the blocks I see
+		//e["to"] = "all"
+
+		return joinSimEvent(e)
+
+	case "acceptNewBestBlock": //PickedChain
+		block := getBlockFromTags(tags)
+
+		e := newSimEvent(l.id)
+		e["type"] = "PickedChain"
+		e["block"] = block.Cid().String()
+		e["from"] = block.Miner.String()
+		//TODO a "to" field doesn't make sense here does it either..
+		//e["to"] = "all"
+
+		return joinSimEvent(e)
+
+	case "finishDeal": //MakeDeal
+		e := newSimEvent(l.id)
+		e["type"] = "MakeDeal"
+		e["from"] = tags["miner"]
+		e["deal"] = tags["deal"]
+		e["txid"] = tags["msgCid"]
+		return joinSimEvent(e)
+
+	case "fetchData": //SendPieces
+		e := newSimEvent(l.id)
+		e["type"] = "SendPieces"
+		e["data"] = tags["data"]
+		return joinSimEvent(e)
+
 	case "minerAddAskCmd": // AddAsk
 		message := getMsgFromTags(tags)
 		msgID, err := message.Cid()
@@ -186,7 +224,6 @@ func (l *SimLogger) convertEL2SL(el map[string]interface{}) []map[string]interfa
 
 	case "AddNewMessage":
 		message := getMsgFromTags(tags)
-		l.Logf("AddNewMessage message: %s", message)
 
 		switch "" {
 		case "": // SendPayment
@@ -227,6 +264,7 @@ func getMsgFromTags(tags map[string]interface{}) types.Message {
 	if err = json.Unmarshal(msg, &message); err != nil {
 		panic(err)
 	}
+	fmt.Printf("\nFORREST MESSAGE METHOD: %s\n", message.Method)
 	return message
 }
 
