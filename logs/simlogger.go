@@ -2,6 +2,7 @@ package logs
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 
 	"github.com/filecoin-project/go-filecoin/types"
@@ -20,6 +21,10 @@ func NewSimLogger(nodeid string, eventlogs io.Reader) *SimLogger {
 	sl := &SimLogger{nodeid, pr, pw, bufch}
 	go sl.transformEventLogs(eventlogs)
 	return sl
+}
+
+func (l *SimLogger) Logf(format string, a ...interface{}) {
+	fmt.Printf("[SIM]\t%s\n", fmt.Sprintf(format, a...))
 }
 
 func (l *SimLogger) Reader() io.Reader {
@@ -100,47 +105,47 @@ func (l *SimLogger) convertEL2SL(el map[string]interface{}) []map[string]interfa
 		e1["type"] = "NewBlockMined"
 		e1["to"] = "all"
 		e1["reward"] = "1000"
-		e1["block"] = tags["block"]
+		e1["block"] = block.Cid().String()
 		e1["from"] = block.Miner.String()
 
 		e2 := newSimEvent(l.id)
 		e2["type"] = "BroadcastBlock"
 		e2["to"] = "all"
-		e2["block"] = tags["block"]
+		e2["block"] = block.Cid().String()
 		e2["from"] = block.Miner.String()
+
 		return joinSimEvent(e1, e2)
 
 	case "minerAddAskCmd": // AddAsk
+		message := getMsgFromTags(tags)
+		msgID, err := message.Cid()
+		if err != nil {
+			panic(err) // would mean there is sever bug or message is nil
+		}
+
 		e := newSimEvent(l.id)
 		e["type"] = "AddAsk"
 		e["to"] = "all"
-
-		// from the command args
 		e["price"] = getStrSafe(tags, "price")
 		e["size"] = getStrSafe(tags, "size")
-
-		// extrace the message and its cid
-		message := getMsgFromTags(tags)
-		msgID, _ := message.Cid()
 
 		e["from"] = message.From.String()
 		e["txid"] = msgID.String()
 		return joinSimEvent(e)
 
 	case "clientAddBidCmd": // AddBid
+		message := getMsgFromTags(tags)
+		msgID, err := message.Cid()
+		if err != nil {
+			panic(err)
+		}
+
 		e := newSimEvent(l.id)
 		e["type"] = "AddBid"
 		e["to"] = "all"
-
-		// from the command args
 		e["price"] = getStrSafe(tags, "price")
 		e["size"] = getStrSafe(tags, "size")
-
-		// extract the message and cid
-		message := getMsgFromTags(tags)
-		msgID, _ := message.Cid()
-
-		e["from"] = message.From.String()
+		e["from"] = tags["from-address"]
 		e["txid"] = msgID.String()
 		return joinSimEvent(e)
 
@@ -180,13 +185,16 @@ func (l *SimLogger) convertEL2SL(el map[string]interface{}) []map[string]interfa
 		return joinSimEvent(e)
 
 	case "AddNewMessage":
-		method := getStrSafe(tags, "method")
-		switch method {
+		message := getMsgFromTags(tags)
+		l.Logf("AddNewMessage message: %s", message)
+
+		switch "" {
 		case "": // SendPayment
 			e := newSimEvent(getStrSafe(tags, "from"))
 			e["type"] = "SendPayment"
-			e["to"] = getStrSafe(tags, "to")
-			e["value"] = tags["value"]
+			e["to"] = message.To.String()
+			e["from"] = message.From.String()
+			e["value"] = message.Value.String()
 			return joinSimEvent(e)
 
 		default:
