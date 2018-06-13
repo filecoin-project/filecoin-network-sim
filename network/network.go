@@ -120,6 +120,7 @@ func (n *Network) tryCreatingNode(t NodeType) (*Node, error) {
 	d, err := daemon.NewDaemon(
 		daemon.RepoDir(filepath.Join(n.repoDir, fmt.Sprintf("node%d", repoNum))),
 		daemon.ShouldInit(true))
+
 	if err != nil {
 		return nil, err
 	}
@@ -165,7 +166,10 @@ func (n *Network) AddNode(t NodeType) (*Node, error) {
 	n.logs.MixReader(node.Logs().Reader())
 
 	// announce the miner to logs
-	node.Logs().WriteEvent(logs.NetworkChurnEvent(node.WalletAddr, string(node.Type), true))
+	eventMap := logs.NetworkChurnEvent(node.WalletAddr, string(node.Type), true)
+	eventMap["cmdAddr"] = node.CmdAddr
+
+	node.Logs().WriteEvent(eventMap)
 
 	fmt.Printf("[NET]\tadded a new node to the network: %s\n", node.ID)
 	return node, nil
