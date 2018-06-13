@@ -178,7 +178,7 @@ func (n *Network) AddNode(t NodeType) (*Node, error) {
 
 	node.Logs().WriteEvent(eventMap)
 
-	fmt.Printf("[NET]\tadded a new node to the network: %s\n", node.ID)
+	fmt.Printf("[NET]\tadded a new node to the network: %s Address: %s\n", node.ID, node.WalletAddr)
 	return node, nil
 }
 

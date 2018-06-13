@@ -2,10 +2,14 @@ package network
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"math/rand"
+	"strings"
 	"time"
+
+	sm "github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 )
 
 type Action int
@@ -92,6 +96,7 @@ func (r *Randomizer) doRandomAction(ctx context.Context, a Action) {
 	case ActionBid:
 		r.doActionBid(ctx)
 	case ActionDeal:
+		r.doActionDeal(ctx)
 	case ActionSendFile:
 	}
 }
@@ -169,6 +174,116 @@ func (r *Randomizer) doActionBid(ctx context.Context) {
 
 	logErr(nd.Daemon.ClientAddBid(ctx, from, size, price))
 	return
+}
+
+func (r *Randomizer) doActionDeal(ctx context.Context) {
+	psudoData := "QmTz3oc4gdpRMKP2sdGUPZTAGRngqjsi99BPoztyP53JMM"
+	nd := r.Net.GetRandomNode(ClientNodeType)
+	if nd == nil {
+		return
+	}
+
+	/*
+		from, err := nd.Daemon.GetMainWalletAddress()
+		if err != nil {
+			logErr(err)
+			return
+		}
+	*/
+
+	out, err := nd.Daemon.OrderbookGetAsks(ctx)
+	if err != nil {
+		logErr(err)
+		return
+	}
+	asks := extractAsks(out.ReadStdout())
+
+	out, err = nd.Daemon.OrderbookGetBids(ctx)
+	if err != nil {
+		logErr(err)
+		return
+	}
+	bids := extractUnusedBids(out.ReadStdout())
+
+	out, err = nd.Daemon.ProposeDeal(asks[0].ID, bids[0].ID, psudoData)
+	if err != nil {
+		logErr(err)
+		return
+	}
+
+	/*
+		askID, err := nil, nil   // get AskID
+		bidID, err := nil, nil   // get BidID
+		dataRef, err := nil, nil // get a CID of the data to use for the deal
+	*/
+}
+
+func extractAsks(input string) []sm.Ask {
+
+	// remove last new line
+	o := strings.Trim(input, "\n")
+	// separate ndjson on new lines
+	as := strings.Split(o, "\n")
+	fmt.Println(as)
+	fmt.Println(len(as))
+
+	var asks []sm.Ask
+	for _, a := range as {
+		var ask sm.Ask
+		fmt.Println(a)
+		err := json.Unmarshal([]byte(a), &ask)
+		if err != nil {
+			panic(err)
+		}
+		asks = append(asks, ask)
+	}
+	return asks
+}
+
+func extractUnusedBids(input string) []sm.Bid {
+	// remove last new line
+	o := strings.Trim(input, "\n")
+	// separate ndjson on new lines
+	bs := strings.Split(o, "\n")
+	fmt.Println(bs)
+	fmt.Println(len(bs))
+
+	var bids []sm.Bid
+	for _, b := range bs {
+		var bid sm.Bid
+		fmt.Println(b)
+		err := json.Unmarshal([]byte(b), &bid)
+		if err != nil {
+			panic(err)
+		}
+		if bid.Used {
+			continue
+		}
+		bids = append(bids, bid)
+	}
+	return bids
+}
+
+func extractDeals(input string) []sm.Deal {
+
+	// remove last new line
+	o := strings.Trim(input, "\n")
+	// separate ndjson on new lines
+	ds := strings.Split(o, "\n")
+	fmt.Println(ds)
+	fmt.Println(len(ds))
+
+	var deals []sm.Deal
+	for _, d := range ds {
+		var deal sm.Deal
+		fmt.Println(d)
+		err := json.Unmarshal([]byte(d), &deal)
+		if err != nil {
+			panic(err)
+		}
+		deals = append(deals, deal)
+	}
+	return deals
 }
 
 func logErr(err error) {
