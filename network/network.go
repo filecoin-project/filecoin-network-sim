@@ -119,7 +119,9 @@ func (n *Network) tryCreatingNode(t NodeType) (*Node, error) {
 
 	d, err := daemon.NewDaemon(
 		daemon.RepoDir(filepath.Join(n.repoDir, fmt.Sprintf("node%d", repoNum))),
-		daemon.ShouldInit(true))
+		daemon.ShouldInit(true),
+		daemon.InsecureApi(),
+	)
 
 	if err != nil {
 		return nil, err
