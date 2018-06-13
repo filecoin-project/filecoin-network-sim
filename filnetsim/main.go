@@ -47,13 +47,14 @@ func SetupInstance() (*Instance, error) {
 
 	r := network.Randomizer{
 		Net:        n,
-		TotalNodes: 30,
-		BlockTime:  2 * time.Second,
+		TotalNodes: 10,
+		BlockTime:  3 * time.Second,
 		ActionTime: 1000 * time.Millisecond,
 		Actions: []network.Action{
 			network.ActionPayment,
 			network.ActionAsk,
 			network.ActionBid,
+			network.ActionDeal,
 		},
 	}
 

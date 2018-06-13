@@ -55,7 +55,7 @@ func (r *Randomizer) addAndRemoveNodes(ctx context.Context) {
 	r.periodic(ctx, r.BlockTime*4, func(ctx context.Context) {
 		go func() {
 			size := r.Net.Size()
-			if size < 6 {
+			if size < r.TotalNodes {
 				_, err := r.Net.AddNode(AnyNodeType)
 				logErr(err)
 			}
@@ -192,14 +192,22 @@ func (r *Randomizer) doActionDeal(ctx context.Context) {
 		logErr(err)
 		return
 	}
-	asks := extractAsks(out.ReadStdout())
+	asks, err := extractAsks(out.ReadStdout())
+	if err != nil {
+		logErr(err)
+		return
+	}
 
 	out, err = nd.Daemon.OrderbookGetBids(ctx)
 	if err != nil {
 		logErr(err)
 		return
 	}
-	bids := extractUnusedBids(out.ReadStdout())
+	bids, err := extractUnusedBids(out.ReadStdout())
+	if err != nil {
+		logErr(err)
+		return
+	}
 
 	out, err = nd.Daemon.ProposeDeal(asks[0].ID, bids[0].ID, psudoData)
 	if err != nil {
@@ -214,7 +222,7 @@ func (r *Randomizer) doActionDeal(ctx context.Context) {
 	*/
 }
 
-func extractAsks(input string) []sm.Ask {
+func extractAsks(input string) ([]sm.Ask, error) {
 
 	// remove last new line
 	o := strings.Trim(input, "\n")
@@ -222,6 +230,9 @@ func extractAsks(input string) []sm.Ask {
 	as := strings.Split(o, "\n")
 	fmt.Println(as)
 	fmt.Println(len(as))
+	if len(as) <= 1 {
+		return nil, fmt.Errorf("No Asks yes")
+	}
 
 	var asks []sm.Ask
 	for _, a := range as {
@@ -233,16 +244,19 @@ func extractAsks(input string) []sm.Ask {
 		}
 		asks = append(asks, ask)
 	}
-	return asks
+	return asks, nil
 }
 
-func extractUnusedBids(input string) []sm.Bid {
+func extractUnusedBids(input string) ([]sm.Bid, error) {
 	// remove last new line
 	o := strings.Trim(input, "\n")
 	// separate ndjson on new lines
 	bs := strings.Split(o, "\n")
 	fmt.Println(bs)
 	fmt.Println(len(bs))
+	if len(bs) <= 1 {
+		return nil, fmt.Errorf("No Bids yet")
+	}
 
 	var bids []sm.Bid
 	for _, b := range bs {
@@ -257,7 +271,7 @@ func extractUnusedBids(input string) []sm.Bid {
 		}
 		bids = append(bids, bid)
 	}
-	return bids
+	return bids, nil
 }
 
 func extractDeals(input string) []sm.Deal {

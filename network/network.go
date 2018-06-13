@@ -161,6 +161,7 @@ func (n *Network) AddNode(t NodeType) (*Node, error) {
 
 	// connect to other miners?
 	// TODO
+	n.ConnectNodeToAll(node)
 
 	// we want realistic sim. lots of actions gated by 1-at-atime consesnus
 	node.Daemon.SetWaitMining(false)
@@ -209,6 +210,7 @@ func (n *Network) ConnectNodeToAll(node *Node) error {
 		_, err := node.Connect(n2.Daemon)
 		logErr(err)
 		if err != nil {
+			panic(err)
 			failed++
 		}
 	}
