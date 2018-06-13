@@ -82,15 +82,20 @@ func runService(ctx context.Context) error {
 
 	lh := NewLogHandler(ctx, i.L)
 
-	// setup http
-	http.Handle("/", http.FileServer(http.Dir(VizDir)))
-	http.Handle("/explorer/", http.StripPrefix("/explorer/", http.FileServer(http.Dir(ExplorerDir))))
-	http.HandleFunc("/logs", lh.HandleHttp)
-	// http.HandleFunc("/restart", RestartHandler)
+	muxA := http.NewServeMux()
+	muxB := http.NewServeMux()
+
+	muxA.Handle("/", http.FileServer(http.Dir(VizDir)))
+	muxA.HandleFunc("/logs", lh.HandleHttp)
+	muxB.Handle("/", http.FileServer(http.Dir(ExplorerDir)))
+
+	go func() {
+		http.ListenAndServe(":7003", muxB)
+	}()
 
 	// run http
 	fmt.Println("Listening at 127.0.0.1:7002/logs")
-	return http.ListenAndServe(":7002", nil)
+	return http.ListenAndServe(":7002", muxA)
 }
 
 func run() error {
