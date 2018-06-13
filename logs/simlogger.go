@@ -193,7 +193,7 @@ func (l *SimLogger) convertEL2SL(el map[string]interface{}) []map[string]interfa
 		e["txid"] = msgID.String()
 		return joinSimEvent(e)
 
-	case "ProposeDealHandler":
+	case "ProposeDeal":
 		ask, ok1 := tags["ask"].(map[string]interface{})
 		bid, ok2 := tags["bid"].(map[string]interface{})
 		deal, ok3 := tags["deal"].(map[string]interface{})
