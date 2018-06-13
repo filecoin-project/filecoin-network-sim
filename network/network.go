@@ -2,6 +2,7 @@ package network
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
 	"path/filepath"
 	"sync"
@@ -179,7 +180,7 @@ func (n *Network) AddNode(t NodeType) (*Node, error) {
 
 	node.Logs().WriteEvent(eventMap)
 
-	fmt.Printf("[NET]\tadded a new node to the network: %s Address: %s\n", node.ID, node.WalletAddr)
+	log.Printf("[NET]\t added a new node to the network: %s Address: %s\n", node.ID, node.WalletAddr)
 	return node, nil
 }
 
@@ -190,7 +191,7 @@ func (n *Network) AddNodes(t NodeType, num int) error {
 	})
 
 	if len(errs) > 0 {
-		return fmt.Errorf("[NET]\tadding %d/%d failed\n", len(errs), num)
+		return fmt.Errorf("[NET]\t adding %d/%d failed\n", len(errs), num)
 	}
 	return nil
 }
@@ -216,7 +217,7 @@ func (n *Network) ConnectNodeToAll(node *Node) error {
 	}
 
 	if failed > 0 {
-		return fmt.Errorf("[NET]\tfailed to connect %d/%d\n", failed, len(conn))
+		return fmt.Errorf("[NET]\t failed to connect %d/%d\n", failed, len(conn))
 	}
 	return nil
 }
@@ -306,7 +307,7 @@ func (n *Network) ShutdownAll() error {
 
 	var err error
 	if len(errs) > 0 {
-		err = fmt.Errorf("[NET]\tshutting down %d/%d failed\n", len(errs), len(n.nodes))
+		err = fmt.Errorf("[NET]\t shutting down %d/%d failed\n", len(errs), len(n.nodes))
 	}
 	return err
 }

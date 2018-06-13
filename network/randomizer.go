@@ -66,7 +66,7 @@ func (r *Randomizer) addAndRemoveNodes(ctx context.Context) {
 // Only miners should mine block
 func (r *Randomizer) mineBlocks(ctx context.Context) {
 	r.periodic(ctx, r.BlockTime, func(ctx context.Context) {
-		n := r.Net.GetRandomNode(MinerNodeType)
+		n := r.Net.GetRandomNode(AnyNodeType)
 		if n == nil {
 			return
 		}
@@ -101,28 +101,28 @@ func (r *Randomizer) doActionPayment(ctx context.Context) {
 	var amtToSend = 5
 	nds := r.Net.GetRandomNodes(ClientNodeType, 2)
 	if len(nds) < 2 || nds[0] == nil || nds[1] == nil {
-		log.Print("not enough nodes for random actions")
+		log.Print("[RAND]\t not enough nodes for random actions")
 		return
 	}
 
-	log.Print("Trying to send payment.")
+	log.Print("[RAND]\t Trying to send payment.")
 	a1, err1 := nds[0].Daemon.GetMainWalletAddress()
 	a2, err2 := nds[1].Daemon.GetMainWalletAddress()
 	logErr(err1)
 	logErr(err2)
 	if a1 == "" || a2 == "" {
-		log.Print("could not get wallet addresses.", a1, a2, err1, err2)
+		log.Print("[RAND]\t could not get wallet addresses.", a1, a2, err1, err2)
 		return
 	}
 
 	// ensure source has balance first. if doesn't, it wont work.
 	bal, err := nds[0].Daemon.WalletBalance(a1)
 	if err != nil {
-		log.Print("could not get balance for address: ", a1)
+		log.Print("[RAND]\t could not get balance for address: ", a1)
 		return
 	}
 	if bal < amtToSend {
-		log.Printf("not enough money in address: %s %d", a1, bal)
+		log.Printf("[RAND]\t not enough money in address: %s %d", a1, bal)
 		return
 	}
 
@@ -228,8 +228,7 @@ func extractAsks(input string) ([]sm.Ask, error) {
 	o := strings.Trim(input, "\n")
 	// separate ndjson on new lines
 	as := strings.Split(o, "\n")
-	fmt.Println(as)
-	fmt.Println(len(as))
+	log.Printf("[RAND] extractAsks: asks of length %d: %v\n", len(as), as)
 	if len(as) <= 1 {
 		return nil, fmt.Errorf("No Asks yes")
 	}
@@ -237,7 +236,7 @@ func extractAsks(input string) ([]sm.Ask, error) {
 	var asks []sm.Ask
 	for _, a := range as {
 		var ask sm.Ask
-		fmt.Println(a)
+		log.Printf("[RAND] extractAsks: ask %v\n", a)
 		err := json.Unmarshal([]byte(a), &ask)
 		if err != nil {
 			panic(err)
@@ -252,8 +251,7 @@ func extractUnusedBids(input string) ([]sm.Bid, error) {
 	o := strings.Trim(input, "\n")
 	// separate ndjson on new lines
 	bs := strings.Split(o, "\n")
-	fmt.Println(bs)
-	fmt.Println(len(bs))
+	log.Printf("[RAND] extractUnusedBids: bids of length %d: %v\n", len(bs), bs)
 	if len(bs) <= 1 {
 		return nil, fmt.Errorf("No Bids yet")
 	}
@@ -261,7 +259,7 @@ func extractUnusedBids(input string) ([]sm.Bid, error) {
 	var bids []sm.Bid
 	for _, b := range bs {
 		var bid sm.Bid
-		fmt.Println(b)
+		log.Printf("[RAND] extractUnusedBids: bid %v\n", b)
 		err := json.Unmarshal([]byte(b), &bid)
 		if err != nil {
 			panic(err)
@@ -280,13 +278,12 @@ func extractDeals(input string) []sm.Deal {
 	o := strings.Trim(input, "\n")
 	// separate ndjson on new lines
 	ds := strings.Split(o, "\n")
-	fmt.Println(ds)
-	fmt.Println(len(ds))
+	log.Printf("[RAND] extractDeals: deals of length %d: %v\n", len(ds), ds)
 
 	var deals []sm.Deal
 	for _, d := range ds {
 		var deal sm.Deal
-		fmt.Println(d)
+		log.Printf("[RAND] extractDeals: deal %v\n", d)
 		err := json.Unmarshal([]byte(d), &deal)
 		if err != nil {
 			panic(err)
@@ -298,6 +295,6 @@ func extractDeals(input string) []sm.Deal {
 
 func logErr(err error) {
 	if err != nil {
-		fmt.Errorf("[RAND]\t ERROR: %s\n", err.Error())
+		log.Printf("[RAND]\t ERROR: %s\n", err.Error())
 	}
 }

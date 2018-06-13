@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -24,7 +25,7 @@ func NewSimLogger(nodeid string, eventlogs io.Reader) *SimLogger {
 }
 
 func (l *SimLogger) Logf(format string, a ...interface{}) {
-	fmt.Printf("[SIM]\t%s\n", fmt.Sprintf(format, a...))
+	log.Printf("[SIM]\t %s", fmt.Sprintf(format, a...))
 }
 
 func (l *SimLogger) Reader() io.Reader {
