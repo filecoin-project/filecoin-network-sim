@@ -63,6 +63,7 @@ func (r *Randomizer) addAndRemoveNodes(ctx context.Context) {
 	})
 }
 
+// Only miners should mine block
 func (r *Randomizer) mineBlocks(ctx context.Context) {
 	r.periodic(ctx, r.BlockTime, func(ctx context.Context) {
 		n := r.Net.GetRandomNode(MinerNodeType)
