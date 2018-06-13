@@ -231,7 +231,7 @@ func (l *SimLogger) convertEL2SL(el map[string]interface{}) []map[string]interfa
 	case "AddNewMessage":
 		message := getMsgFromTags(tags)
 
-		switch "" {
+		switch message.Method {
 		case "": // SendPayment
 			e := newSimEvent(getStrSafe(tags, "from"))
 			e["type"] = "SendPayment"
