@@ -220,6 +220,9 @@ func (l *SimLogger) convertEL2SL(el map[string]interface{}) []map[string]interfa
 		e1["data"] = data
 		e1["price"] = ask["price"]
 		e1["size"] = bid["size"]
+		e1["ask"] = ask
+		e1["bid"] = bid
+		e1["deal"] = deal
 
 		e2 := newSimEvent(client) // SendFile
 		e2["type"] = "SendFile"
