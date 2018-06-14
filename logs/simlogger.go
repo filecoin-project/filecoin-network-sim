@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 
+	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -242,20 +243,41 @@ func (l *SimLogger) convertEL2SL(el map[string]interface{}) []map[string]interfa
 		switch message.Method {
 
 		case "addAsk":
+			// WOW this actually works holy shit
+			t := []abi.Type{abi.BytesAmount, abi.BytesAmount}
+			v, err := abi.DecodeValues(message.Params, t)
+			if err != nil {
+				panic(err)
+			}
+			price := v[0].String()
+			size := v[1].String()
+
 			e := newSimEvent(getStrSafe(tags, "from"))
 			e["type"] = "AddAsk"
 			e["to"] = message.To.String()
 			e["from"] = message.From.String()
 			e["value"] = message.Value.String()
+			e["size"] = size
+			e["price"] = price
 			e["txid"] = cid.String()
 			return joinSimEvent(e)
 
 		case "addBid":
+			t := []abi.Type{abi.BytesAmount, abi.BytesAmount}
+			v, err := abi.DecodeValues(message.Params, t)
+			if err != nil {
+				panic(err)
+			}
+			price := v[0].String()
+			size := v[1].String()
+
 			e := newSimEvent(getStrSafe(tags, "from"))
 			e["type"] = "AddBid"
 			e["to"] = message.To.String()
 			e["from"] = message.From.String()
 			e["value"] = message.Value.String()
+			e["size"] = size
+			e["price"] = price
 			e["txid"] = cid.String()
 			return joinSimEvent(e)
 
