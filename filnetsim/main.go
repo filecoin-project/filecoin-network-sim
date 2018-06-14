@@ -16,7 +16,7 @@ import (
 
 const (
 	VizDir      = "./filecoin-network-viz/viz-circle"
-	ExplorerDir = "./filecoin-explorer/dist"
+	ExplorerDir = "./filecoin-explorer/build"
 )
 
 var opts = struct {
