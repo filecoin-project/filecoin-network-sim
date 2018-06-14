@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"sort"
 	"strings"
 	"time"
 
@@ -198,6 +199,10 @@ func (r *Randomizer) doActionDeal(ctx context.Context) {
 		return
 	}
 
+	sort.Slice(asks[:], func(i, j int) bool {
+		return asks[i].ID < asks[j].ID
+	})
+
 	out, err = nd.Daemon.OrderbookGetBids(ctx)
 	if err != nil {
 		logErr(err)
@@ -208,6 +213,10 @@ func (r *Randomizer) doActionDeal(ctx context.Context) {
 		logErr(err)
 		return
 	}
+
+	sort.Slice(bids[:], func(i, j int) bool {
+		return bids[i].ID < bids[j].ID
+	})
 
 	out, err = nd.Daemon.ProposeDeal(asks[0].ID, bids[0].ID, psudoData)
 	if err != nil {
