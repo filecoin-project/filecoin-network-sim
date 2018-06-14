@@ -60,6 +60,7 @@ func NewNode(d *daemon.Daemon, id string, t NodeType) (*Node, error) {
 		return nil, err
 	}
 
+	fmt.Printf("**** Created Node with MainWalletAddress: %s\n", addr)
 	return n, nil
 }
 

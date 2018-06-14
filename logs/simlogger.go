@@ -112,7 +112,7 @@ func (l *SimLogger) convertEL2SL(el map[string]interface{}) []map[string]interfa
 		e1 := newSimEvent(l.id)
 		e1["type"] = "NewBlockMined"
 		e1["to"] = "all"
-		e1["reward"] = "1000"
+		e1["reward"] = "20000"
 		e1["block"] = block.Cid().String()
 		e1["from"] = block.Miner.String()
 
@@ -146,6 +146,15 @@ func (l *SimLogger) convertEL2SL(el map[string]interface{}) []map[string]interfa
 		//TODO a "to" field doesn't make sense here does it either..
 		//e["to"] = "all"
 
+		return joinSimEvent(e)
+
+	case "minerCreateCmd":
+		e := newSimEvent(getStrSafe(tags, "from-address"))
+		e["pledge"] = tags["pledge"]
+		e["collateral"] = tags["collateral"]
+		e["miner-addr"] = tags["addr"]
+		e["type"] = "CreateMiner"
+		e["to"] = "all"
 		return joinSimEvent(e)
 
 	case "finishDeal": //MakeDeal
@@ -216,7 +225,7 @@ func (l *SimLogger) convertEL2SL(el map[string]interface{}) []map[string]interfa
 		e1 := newSimEvent(client) // MakeDeal
 		e1["type"] = "MakeDeal"
 		// TODO this address is wrong in the browser console
-		e1["to"] = miner
+		e1["to"] = tags["miner-owner"]
 		e1["data"] = data
 		e1["price"] = ask["price"]
 		e1["size"] = bid["size"]
