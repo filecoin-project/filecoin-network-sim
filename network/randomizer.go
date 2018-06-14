@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"math/rand"
 	"sort"
@@ -174,7 +175,6 @@ func (r *Randomizer) doActionBid(ctx context.Context) {
 }
 
 func (r *Randomizer) doActionDeal(ctx context.Context) {
-	psudoData := "QmTz3oc4gdpRMKP2sdGUPZTAGRngqjsi99BPoztyP53JMM"
 	nd := r.Net.GetRandomNode(ClientNodeType)
 	if nd == nil {
 		return
@@ -218,11 +218,23 @@ func (r *Randomizer) doActionDeal(ctx context.Context) {
 		return bids[i].ID < bids[j].ID
 	})
 
-	out, err = nd.Daemon.ProposeDeal(asks[0].ID, bids[0].ID, psudoData)
+	// TODO put interesting info in the file like the bid and ask id
+	importFile, err := ioutil.TempFile(nd.RepoDir, "dealFile")
 	if err != nil {
+		panic(err)
+	}
+	out, err = nd.Daemon.ClientImport(importFile.Name())
+	if err != nil {
+		panic(err)
+	}
+
+	out, err = nd.Daemon.ProposeDeal(asks[0].ID, bids[0].ID, out.ReadStdoutTrimNewlines())
+	if err != nil {
+		panic(err)
 		logErr(err)
 		return
 	}
+	log.Printf("[RAND] deal proposal: %s\n", out)
 
 	/*
 		askID, err := nil, nil   // get AskID
