@@ -28,10 +28,10 @@ $(VIZ_NODE_MODULES):
 	(cd filecoin-network-viz/viz-circle; npm install)
 
 explorer: $(EXPLORER_NODE_MODULES)
-	(cd filecoin-explorer; npm run build)
+	(cd filecoin-explorer; yarn build)
 
 $(EXPLORER_NODE_MODULES):
-	(cd filecoin-explorer; npm install)
+	(cd filecoin-explorer; yarn)
 
 bin/go-filecoin:
 	@bin/build-filecoin.sh
