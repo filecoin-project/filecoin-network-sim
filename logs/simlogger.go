@@ -238,10 +238,6 @@ func (l *SimLogger) convertEL2SL(el map[string]interface{}) []map[string]interfa
 
 	case "AddNewMessage":
 		message := getMsgFromTags(tags)
-		cid, err := message.Cid()
-		if err != nil {
-			panic(err)
-		}
 
 		switch message.Method {
 
@@ -282,6 +278,14 @@ func (l *SimLogger) convertEL2SL(el map[string]interface{}) []map[string]interfa
 			e["size"] = size
 			e["price"] = price
 			e["txid"] = cid.String()
+			return joinSimEvent(e)
+
+		case "sendMessage":
+			e := newSimEvent(getStrSafe(tags, "from"))
+			e["type"] = "SendPayment"
+			e["to"] = message.To.String()
+			e["from"] = message.From.String()
+			e["value"] = message.Value.String()
 			return joinSimEvent(e)
 
 		default:
