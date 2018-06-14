@@ -212,6 +212,7 @@ func (l *SimLogger) convertEL2SL(el map[string]interface{}) []map[string]interfa
 
 		e1 := newSimEvent(client) // MakeDeal
 		e1["type"] = "MakeDeal"
+		// TODO this address is wrong in the browser console
 		e1["to"] = miner
 		e1["data"] = data
 		e1["price"] = ask["price"]
