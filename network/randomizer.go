@@ -140,7 +140,7 @@ func (r *Randomizer) doActionPayment(ctx context.Context) {
 
 func (r *Randomizer) doActionAsk(ctx context.Context) {
 	var size = 2048 + rand.Intn(2048)
-	var price = rand.Intn(30)
+	var price = rand.Intn(30) + 1
 
 	nd := r.Net.GetRandomNode(MinerNodeType)
 	if nd == nil {
@@ -160,7 +160,7 @@ func (r *Randomizer) doActionAsk(ctx context.Context) {
 
 func (r *Randomizer) doActionBid(ctx context.Context) {
 	var size = 2048 + rand.Intn(2048)
-	var price = rand.Intn(30)
+	var price = rand.Intn(30) + 1
 
 	nd := r.Net.GetRandomNode(ClientNodeType)
 	if nd == nil {
@@ -203,48 +203,107 @@ func (r *Randomizer) doActionDeal(ctx context.Context) {
 		return
 	}
 
-	sort.Slice(asks[:], func(i, j int) bool {
-		return asks[i].ID < asks[j].ID
-	})
-
 	out, err = nd.Daemon.OrderbookGetBids(ctx)
 	if err != nil {
 		logErr(err)
 		return
 	}
+
 	bids, err := extractUnusedBids(out.ReadStdout())
 	if err != nil {
 		logErr(err)
 		return
 	}
 
-	sort.Slice(bids[:], func(i, j int) bool {
-		return bids[i].ID < bids[j].ID
-	})
+	wallet := nd.WalletAddr
+
+	log.Printf("Wallet Address: %s\n", wallet)
+
+	ask, bid, err := getBestDealPair(asks, bids, wallet)
+
+	if err != nil {
+		logErr(err)
+		return
+	}
+
+	log.Printf("[RAND] deal found ask and bid\n")
+	log.Printf("[RAND] ask %d %s %s\n", ask.ID, ask.Price.String(), ask.Size.String())
+	log.Printf("[RAND] bid %d %s %s\n", bid.ID, bid.Price.String(), bid.Size.String())
 
 	// TODO put interesting info in the file like the bid and ask id
 	importFile, err := ioutil.TempFile(nd.RepoDir, "dealFile")
 	if err != nil {
 		panic(err)
 	}
+
+	defer importFile.Close()
+	enc := json.NewEncoder(importFile)
+
+	enc.Encode(ask)
+	enc.Encode(bid)
+
+	// Write stuff to the file
 	out, err = nd.Daemon.ClientImport(importFile.Name())
 	if err != nil {
 		panic(err)
 	}
 
-	out, err = nd.Daemon.ProposeDeal(asks[0].ID, bids[0].ID, out.ReadStdoutTrimNewlines())
+	out, err = nd.Daemon.ProposeDeal(ask.ID, bid.ID, out.ReadStdoutTrimNewlines())
 	if err != nil {
 		panic(err)
 		logErr(err)
 		return
 	}
+
 	log.Printf("[RAND] deal proposal: %s\n", out)
+	importFile.Write([]byte(out.ReadStdout()))
 
 	/*
 		askID, err := nil, nil   // get AskID
 		bidID, err := nil, nil   // get BidID
 		dataRef, err := nil, nil // get a CID of the data to use for the deal
 	*/
+}
+
+func getBestDealPair(asks []sm.Ask, bids []sm.Bid, wallet string) (sm.Ask, sm.Bid, error) {
+	// Sort bids by ID, FIFO
+	sort.Slice(bids[:], func(i, j int) bool {
+		return bids[i].ID < bids[j].ID
+	})
+
+	// Sort asks by Price, as we will always want the best price
+	sort.Slice(asks[:], func(i, j int) bool {
+		return asks[i].Price.LessThan(asks[j].Price)
+	})
+
+	// All bids for the given wallet
+	var walletBids []sm.Bid
+
+	// Find all bids for the provided wallet
+	for _, b := range bids {
+		if b.Owner.String() == wallet {
+			log.Printf("[RAND] getBestDealPair found bid for wallet %s id, %d, price %s, size, %s\n", wallet, b.ID, b.Price.String(), b.Size.String())
+			walletBids = append(walletBids, b)
+		}
+	}
+
+	if len(walletBids) != 0 {
+		for _, b := range walletBids {
+			// Check to see if the bid fits within an ask
+			for _, a := range asks {
+				if b.Size.LessEqual(a.Size) && b.Price.GreaterEqual(a.Price) {
+					// Valid bid for ask
+					return a, b, nil
+				}
+			}
+		}
+	} else {
+		log.Printf("Could not find any bids for wallet %s\n", wallet)
+	}
+
+	err := fmt.Errorf("Could not find matching ask / bid for wallet %s", wallet)
+	return sm.Ask{}, sm.Bid{}, err
+
 }
 
 func extractAsks(input string) ([]sm.Ask, error) {
