@@ -161,38 +161,40 @@ func (l *SimLogger) convertEL2SL(el map[string]interface{}) []map[string]interfa
 		e["data"] = tags["data"]
 		return joinSimEvent(e)
 
-	case "minerAddAskCmd": // AddAsk
-		message := getMsgFromTags(tags)
-		msgID, err := message.Cid()
-		if err != nil {
-			panic(err) // developer error
-		}
+		/*
+			case "minerAddAskCmd": // AddAsk
+				message := getMsgFromTags(tags)
+				msgID, err := message.Cid()
+				if err != nil {
+					panic(err) // developer error
+				}
 
-		e := newSimEvent(l.id)
-		e["type"] = "AddAsk"
-		e["to"] = "all"
-		e["price"] = getStrSafe(tags, "price")
-		e["size"] = getStrSafe(tags, "size")
+				e := newSimEvent(l.id)
+				e["type"] = "AddAsk"
+				e["to"] = "all"
+				e["price"] = getStrSafe(tags, "price")
+				e["size"] = getStrSafe(tags, "size")
 
-		e["from"] = message.From.String()
-		e["txid"] = msgID.String()
-		return joinSimEvent(e)
+				e["from"] = message.From.String()
+				e["txid"] = msgID.String()
+				return joinSimEvent(e)
 
-	case "clientAddBidCmd": // AddBid
-		message := getMsgFromTags(tags)
-		msgID, err := message.Cid()
-		if err != nil {
-			panic(err)
-		}
+			case "clientAddBidCmd": // AddBid
+				message := getMsgFromTags(tags)
+				msgID, err := message.Cid()
+				if err != nil {
+					panic(err)
+				}
 
-		e := newSimEvent(l.id)
-		e["type"] = "AddBid"
-		e["to"] = "all"
-		e["price"] = getStrSafe(tags, "price")
-		e["size"] = getStrSafe(tags, "size")
-		e["from"] = message.From.String()
-		e["txid"] = msgID.String()
-		return joinSimEvent(e)
+				e := newSimEvent(l.id)
+				e["type"] = "AddBid"
+				e["to"] = "all"
+				e["price"] = getStrSafe(tags, "price")
+				e["size"] = getStrSafe(tags, "size")
+				e["from"] = message.From.String()
+				e["txid"] = msgID.String()
+				return joinSimEvent(e)
+		*/
 
 	case "ProposeDeal":
 		ask, ok1 := tags["ask"].(map[string]interface{})
@@ -232,19 +234,47 @@ func (l *SimLogger) convertEL2SL(el map[string]interface{}) []map[string]interfa
 
 	case "AddNewMessage":
 		message := getMsgFromTags(tags)
+		cid, err := message.Cid()
+		if err != nil {
+			panic(err)
+		}
 
 		switch message.Method {
-		case "": // SendPayment
+
+		case "addAsk":
 			e := newSimEvent(getStrSafe(tags, "from"))
-			e["type"] = "SendPayment"
+			e["type"] = "AddAsk"
 			e["to"] = message.To.String()
 			e["from"] = message.From.String()
 			e["value"] = message.Value.String()
+			e["txid"] = cid.String()
+			return joinSimEvent(e)
+
+		case "addBid":
+			e := newSimEvent(getStrSafe(tags, "from"))
+			e["type"] = "AddBid"
+			e["to"] = message.To.String()
+			e["from"] = message.From.String()
+			e["value"] = message.Value.String()
+			e["txid"] = cid.String()
 			return joinSimEvent(e)
 
 		default:
+			fmt.Printf("UNKNOWN MESSAGE: %v", message)
 			return nil // unused
 		}
+	case "HeartBeat":
+		e := newSimEvent(l.id)
+		e["type"] = "HeartBeat"
+		e["peer-id"] = tags["peer-id"]
+		e["peers"] = tags["peers"]
+		e["asks"] = tags["ask-list"]
+		e["bids"] = tags["bid-list"]
+		e["deals"] = tags["deal-list"]
+		e["best-block"] = tags["best-block"]
+		e["pending"] = tags["pending-messages"]
+		e["wallet-addrs"] = tags["wallet-address"]
+		return joinSimEvent(e)
 
 	default:
 		return nil // unused.
