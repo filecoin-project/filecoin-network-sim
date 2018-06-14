@@ -150,7 +150,7 @@ func (l *SimLogger) convertEL2SL(el map[string]interface{}) []map[string]interfa
 
 	case "finishDeal": //MakeDeal
 		e := newSimEvent(l.id)
-		e["type"] = "MakeDeal"
+		e["type"] = "FinishDeal"
 		e["from"] = tags["miner"]
 		e["deal"] = tags["deal"]
 		e["txid"] = tags["msgCid"]
@@ -238,6 +238,10 @@ func (l *SimLogger) convertEL2SL(el map[string]interface{}) []map[string]interfa
 
 	case "AddNewMessage":
 		message := getMsgFromTags(tags)
+		cid, err := message.Cid()
+		if err != nil {
+			panic(err)
+		}
 
 		switch message.Method {
 
