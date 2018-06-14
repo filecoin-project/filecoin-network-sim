@@ -100,7 +100,7 @@ func (l *SimLogger) convertEL2SL(el map[string]interface{}) []map[string]interfa
 
 	_, ok = tags["error"]
 	if ok {
-		l.Logf("ERROR IN EVENT LOG: %v", el)
+		// Skip the invalid operations
 		return nil
 	}
 
@@ -218,7 +218,7 @@ func (l *SimLogger) convertEL2SL(el map[string]interface{}) []map[string]interfa
 		e1["size"] = bid["size"]
 
 		e2 := newSimEvent(client) // SendFile
-		e1["type"] = "SendFile"
+		e2["type"] = "SendFile"
 		e2["to"] = miner
 		e2["data"] = data
 		return joinSimEvent(e1, e2)
@@ -231,7 +231,6 @@ func (l *SimLogger) convertEL2SL(el map[string]interface{}) []map[string]interfa
 
 	case "AddNewMessage":
 		message := getMsgFromTags(tags)
-		l.Logf("FORREST MESSAGE: %v", message)
 
 		switch message.Method {
 		case "": // SendPayment
