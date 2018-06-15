@@ -1,7 +1,7 @@
 VIZ_NODE_MODULES := "filecoin-network-viz/viz-circle/node_modules"
 EXPLORER_NODE_MODULES := "filecoin-explorer/node_modules"
 
-build:
+build: frontend
 	cd filnetsim && go build
 
 install:
@@ -13,10 +13,10 @@ test:
 run: build
 	filnetsim/filnetsim
 
-runDebug: build deps frontend
+runDebug: build
 	filnetsim/filnetsim --debug
 
-deps: submodules bin/go-filecoin
+deps: submodules bin/go-filecoin $(VIZ_NODE_MODULES) $(EXPLORER_NODE_MODULES)
 
 frontend: submodules viz explorer
 .PHONY: frontend
