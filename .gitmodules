@@ -1,3 +1,6 @@
 [submodule "filecoin-network-viz"]
 	path = filecoin-network-viz
 	url = git@github.com:filecoin-project/filecoin-network-viz
+[submodule "filecoin-explorer"]
+	path = filecoin-explorer
+	url = git@github.com:filecoin-project/filecoin-explorer.git

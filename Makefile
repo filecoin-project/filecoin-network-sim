@@ -1,3 +1,6 @@
+VIZ_NODE_MODULES := "filecoin-network-viz/viz-circle/node_modules"
+EXPLORER_NODE_MODULES := "filecoin-explorer/node_modules"
+
 build:
 	cd filnetsim && go build
 
@@ -8,14 +11,27 @@ test:
 	go test ./...
 
 run: build
-	open http://127.0.0.1:7002/
 	filnetsim/filnetsim
 
-runDebug: build deps
-	open http://127.0.0.1:7002/
+runDebug: build deps frontend
 	filnetsim/filnetsim --debug
 
 deps: submodules bin/go-filecoin
+
+frontend: submodules viz explorer
+.PHONY: frontend
+
+viz: $(VIZ_NODE_MODULES)
+	(cd filecoin-network-viz/viz-circle; yarn run build)
+
+$(VIZ_NODE_MODULES):
+	(cd filecoin-network-viz/viz-circle; yarn install)
+
+explorer: $(EXPLORER_NODE_MODULES)
+	(cd filecoin-explorer; yarn run build)
+
+$(EXPLORER_NODE_MODULES):
+	(cd filecoin-explorer; yarn install)
 
 bin/go-filecoin:
 	@bin/build-filecoin.sh
