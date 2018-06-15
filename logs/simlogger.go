@@ -343,7 +343,6 @@ func (l *SimLogger) convertEL2SL(el map[string]interface{}) []map[string]interfa
 			return joinSimEvent(e)
 
 		default:
-			fmt.Printf("UNKNOWN MESSAGE: %v", message)
 			return nil // unused
 		}
 	case "HeartBeat":
