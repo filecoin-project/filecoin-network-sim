@@ -139,7 +139,7 @@ func (r *Randomizer) doActionPayment(ctx context.Context) {
 }
 
 func (r *Randomizer) doActionAsk(ctx context.Context) {
-	var size = 2048 + rand.Intn(2048)
+	var size = 32 + rand.Intn(16)
 	var price = rand.Intn(30) + 1
 
 	nd := r.Net.GetRandomNode(MinerNodeType)
@@ -159,7 +159,7 @@ func (r *Randomizer) doActionAsk(ctx context.Context) {
 }
 
 func (r *Randomizer) doActionBid(ctx context.Context) {
-	var size = rand.Intn(16)
+	var size = 32 + rand.Intn(16)
 	var price = rand.Intn(30) + 1
 
 	nd := r.Net.GetRandomNode(ClientNodeType)

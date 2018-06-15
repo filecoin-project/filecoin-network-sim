@@ -47,7 +47,7 @@ func SetupInstance() (*Instance, error) {
 
 	r := network.Randomizer{
 		Net:        n,
-		TotalNodes: 10,
+		TotalNodes: 50,
 		BlockTime:  3 * time.Second,
 		ActionTime: 1000 * time.Millisecond,
 		Actions: []network.Action{

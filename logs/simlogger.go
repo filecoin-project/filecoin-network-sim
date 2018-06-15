@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/types"
+	//gcid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 )
 
 type SimLogger struct {
@@ -291,6 +292,36 @@ func (l *SimLogger) convertEL2SL(el map[string]interface{}) []map[string]interfa
 			e["size"] = size
 			e["price"] = price
 			e["txid"] = cid.String()
+			return joinSimEvent(e)
+
+		case "addDeal":
+			//              askID       bidID          sig       data
+			t := []abi.Type{abi.Integer, abi.Integer, abi.Bytes, abi.Bytes}
+			v, err := abi.DecodeValues(message.Params, t)
+			if err != nil {
+				panic(err)
+			}
+			askID := v[0].String() // askID
+			bidID := v[1].String() // bidID
+
+			sig, err := v[2].Serialize() // sig
+			if err != nil {
+				panic(err)
+			}
+
+			data, err := v[2].Serialize() // data
+			if err != nil {
+				panic(err)
+			}
+
+			e := newSimEvent(l.id)
+			e["type"] = "AddDeal"
+			e["to"] = "all" // message.To is StorageMarketAddress
+			e["from"] = message.From.String()
+			e["askID"] = askID
+			e["bidID"] = bidID
+			e["sig"] = string(sig)   // probs empty
+			e["data"] = string(data) //cid
 			return joinSimEvent(e)
 
 		case "sendMessage":
