@@ -107,6 +107,19 @@ func (l *SimLogger) convertEL2SL(el map[string]interface{}) []map[string]interfa
 	}
 
 	switch op {
+
+	case "sm.AddBid":
+		e := newSimEvent(l.id)
+		e["type"] = "AddBid"
+		e["bid"] = tags["bid"]
+		return joinSimEvent(e)
+
+	case "sm.AddAsk":
+		e := newSimEvent(l.id)
+		e["type"] = "AddAsk"
+		e["ask"] = tags["ask"]
+		return joinSimEvent(e)
+
 	case "AddNewBlock": // NewBlockMined, BroadcastBlock
 		block := getBlockFromTags(tags)
 
@@ -248,51 +261,48 @@ func (l *SimLogger) convertEL2SL(el map[string]interface{}) []map[string]interfa
 
 	case "AddNewMessage":
 		message := getMsgFromTags(tags)
-		cid, err := message.Cid()
-		if err != nil {
-			panic(err)
-		}
-
 		switch message.Method {
 
-		case "addAsk":
-			// WOW this actually works holy shit
-			t := []abi.Type{abi.BytesAmount, abi.BytesAmount}
-			v, err := abi.DecodeValues(message.Params, t)
-			if err != nil {
-				panic(err)
-			}
-			price := v[0].String()
-			size := v[1].String()
+		/*
+			case "addAsk":
+				// WOW this actually works holy shit
+				t := []abi.Type{abi.BytesAmount, abi.BytesAmount}
+				v, err := abi.DecodeValues(message.Params, t)
+				if err != nil {
+					panic(err)
+				}
+				price := v[0].String()
+				size := v[1].String()
 
-			e := newSimEvent(getStrSafe(tags, "from"))
-			e["type"] = "AddAsk"
-			e["to"] = message.To.String()
-			e["from"] = message.From.String()
-			e["value"] = message.Value.String()
-			e["size"] = size
-			e["price"] = price
-			e["txid"] = cid.String()
-			return joinSimEvent(e)
+				e := newSimEvent(getStrSafe(tags, "from"))
+				e["type"] = "AddAsk"
+				e["to"] = message.To.String()
+				e["from"] = message.From.String()
+				e["value"] = message.Value.String()
+				e["size"] = size
+				e["price"] = price
+				e["txid"] = cid.String()
+				return joinSimEvent(e)
 
-		case "addBid":
-			t := []abi.Type{abi.BytesAmount, abi.BytesAmount}
-			v, err := abi.DecodeValues(message.Params, t)
-			if err != nil {
-				panic(err)
-			}
-			price := v[0].String()
-			size := v[1].String()
+			case "addBid":
+				t := []abi.Type{abi.BytesAmount, abi.BytesAmount}
+				v, err := abi.DecodeValues(message.Params, t)
+				if err != nil {
+					panic(err)
+				}
+				price := v[0].String()
+				size := v[1].String()
 
-			e := newSimEvent(getStrSafe(tags, "from"))
-			e["type"] = "AddBid"
-			e["to"] = message.To.String()
-			e["from"] = message.From.String()
-			e["value"] = message.Value.String()
-			e["size"] = size
-			e["price"] = price
-			e["txid"] = cid.String()
-			return joinSimEvent(e)
+				e := newSimEvent(getStrSafe(tags, "from"))
+				e["type"] = "AddBid"
+				e["to"] = message.To.String()
+				e["from"] = message.From.String()
+				e["value"] = message.Value.String()
+				e["size"] = size
+				e["price"] = price
+				e["txid"] = cid.String()
+				return joinSimEvent(e)
+		*/
 
 		case "addDeal":
 			//              askID       bidID          sig       data

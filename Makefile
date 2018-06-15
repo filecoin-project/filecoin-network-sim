@@ -22,16 +22,16 @@ frontend: submodules viz explorer
 .PHONY: frontend
 
 viz: $(VIZ_NODE_MODULES)
-	(cd filecoin-network-viz/viz-circle; npm run build)
+	(cd filecoin-network-viz/viz-circle; yarn run build)
 
 $(VIZ_NODE_MODULES):
-	(cd filecoin-network-viz/viz-circle; npm install)
+	(cd filecoin-network-viz/viz-circle; yarn install)
 
 explorer: $(EXPLORER_NODE_MODULES)
-	(cd filecoin-explorer; npm run build)
+	(cd filecoin-explorer; yarn run build)
 
 $(EXPLORER_NODE_MODULES):
-	(cd filecoin-explorer; npm install)
+	(cd filecoin-explorer; yarn install)
 
 bin/go-filecoin:
 	@bin/build-filecoin.sh
