@@ -95,7 +95,7 @@ func runService(ctx context.Context) error {
 	}()
 
 	// run http
-	fmt.Println("Listening at 127.0.0.1:7002/logs")
+	fmt.Println("Listening at http://127.0.0.1:7002/logs")
 	return http.ListenAndServe(":7002", muxA)
 }
 
