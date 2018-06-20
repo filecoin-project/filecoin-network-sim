@@ -121,7 +121,11 @@ func (l *SimLogger) convertEL2SL(el map[string]interface{}) []map[string]interfa
 		return joinSimEvent(e)
 
 	case "AddNewBlock": // NewBlockMined, BroadcastBlock
-		block := getBlockFromTags(tags)
+		block, err := getBlockFromTags(tags, "block")
+		if err != nil {
+			l.Logf("failed to get block: %v", err)
+			return nil
+		}
 
 		e1 := newSimEvent(l.id)
 		e1["type"] = "NewBlockMined"
@@ -139,7 +143,11 @@ func (l *SimLogger) convertEL2SL(el map[string]interface{}) []map[string]interfa
 		return joinSimEvent(e1, e2)
 
 	case "ProcessNewBlock": //SawBlock
-		block := getBlockFromTags(tags)
+		block, err := getBlockFromTags(tags, "block")
+		if err != nil {
+			l.Logf("failed to get block: %v", err)
+			return nil
+		}
 
 		e := newSimEvent(l.id)
 		e["type"] = "SawBlock"
@@ -157,7 +165,11 @@ func (l *SimLogger) convertEL2SL(el map[string]interface{}) []map[string]interfa
 		return joinSimEvent(e)
 
 	case "acceptNewBestBlock": //PickedChain
-		block := getBlockFromTags(tags)
+		block, err := getBlockFromTags(tags, "block")
+		if err != nil {
+			l.Logf("failed to get block: %v", err)
+			return nil
+		}
 
 		e := newSimEvent(l.id)
 		e["type"] = "PickedChain"
@@ -264,7 +276,11 @@ func (l *SimLogger) convertEL2SL(el map[string]interface{}) []map[string]interfa
 		return joinSimEvent(e)
 
 	case "AddNewMessage":
-		message := getMsgFromTags(tags)
+		message, err := getMsgFromTags(tags, "message")
+		if err != nil {
+			l.Logf("failed to get message: %v", err)
+			return nil
+		}
 		switch message.Method {
 
 		/*
@@ -313,19 +329,19 @@ func (l *SimLogger) convertEL2SL(el map[string]interface{}) []map[string]interfa
 			t := []abi.Type{abi.Integer, abi.Integer, abi.Bytes, abi.Bytes}
 			v, err := abi.DecodeValues(message.Params, t)
 			if err != nil {
-				panic(err)
+				l.Logf("failed to decode deal params: %v", err)
 			}
 			askID := v[0].String() // askID
 			bidID := v[1].String() // bidID
 
 			sig, err := v[2].Serialize() // sig
 			if err != nil {
-				panic(err)
+				l.Logf("failed to decode deal sig: %v", err)
 			}
 
 			data, err := v[2].Serialize() // data
 			if err != nil {
-				panic(err)
+				l.Logf("failed to decode deal data: %v", err)
 			}
 
 			e := newSimEvent(l.id)
@@ -367,28 +383,28 @@ func (l *SimLogger) convertEL2SL(el map[string]interface{}) []map[string]interfa
 	}
 }
 
-func getBlockFromTags(tags map[string]interface{}) types.Block {
+func getBlockFromTags(tags map[string]interface{}, key string) (types.Block, error) {
 	var block types.Block
-	blk, err := json.Marshal(tags["block"])
+	blk, err := json.Marshal(tags[key])
 	if err != nil {
-		panic(err)
+		return types.Block{}, err
 	}
 	if err = json.Unmarshal(blk, &block); err != nil {
-		panic(err)
+		return types.Block{}, err
 	}
-	return block
+	return block, nil
 }
 
-func getMsgFromTags(tags map[string]interface{}) types.Message {
+func getMsgFromTags(tags map[string]interface{}, key string) (types.Message, error) {
 	var message types.Message
-	msg, err := json.Marshal(tags["message"])
+	msg, err := json.Marshal(tags[key])
 	if err != nil {
-		panic(err)
+		return types.Message{}, err
 	}
 	if err = json.Unmarshal(msg, &message); err != nil {
-		panic(err)
+		return types.Message{}, err
 	}
-	return message
+	return message, nil
 }
 
 func cidSetToStrings(set types.SortedCidSet) []string {
