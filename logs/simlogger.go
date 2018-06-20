@@ -143,10 +143,16 @@ func (l *SimLogger) convertEL2SL(el map[string]interface{}) []map[string]interfa
 
 		e := newSimEvent(l.id)
 		e["type"] = "SawBlock"
-		e["block"] = block.Cid().String()
+		e["block"] = blockForSimEvent(block)
+
+		// TODO: remove these next two lines, they're legacy.
 		e["from"] = block.Miner.String()
-		//TODO a "to" field doesn't make sense here does it? I don't tell peers about all the blocks I see
-		//e["to"] = "all"
+		e["to"] = l.id
+
+		// this is the right way to do it:
+		// and "miner" should be in the block itself.
+		e["miner"] = block.Miner.String()
+		e["receiver"] = l.id
 
 		return joinSimEvent(e)
 
@@ -155,10 +161,8 @@ func (l *SimLogger) convertEL2SL(el map[string]interface{}) []map[string]interfa
 
 		e := newSimEvent(l.id)
 		e["type"] = "PickedChain"
-		e["block"] = block.Cid().String()
-		e["from"] = block.Miner.String()
-		//TODO a "to" field doesn't make sense here does it either..
-		//e["to"] = "all"
+		e["node"] = l.id
+		e["block"] = blockForSimEvent(block)
 
 		return joinSimEvent(e)
 
@@ -385,6 +389,25 @@ func getMsgFromTags(tags map[string]interface{}) types.Message {
 		panic(err)
 	}
 	return message
+}
+
+func cidSetToStrings(set types.SortedCidSet) []string {
+	var s []string
+	for it := set.Iter(); !it.Complete(); it.Next() {
+		s = append(s, it.Value().String())
+	}
+	return s
+}
+
+func blockForSimEvent(b types.Block) map[string]interface{} {
+	return map[string]interface{}{
+		"cid":          b.Cid().String(),
+		"parents":      cidSetToStrings(b.Parents),
+		"miner":        b.Miner.String(),
+		"height":       b.Height,
+		"messageCount": len(b.Messages),
+		"stateRoot":    b.StateRoot.String(),
+	}
 }
 
 // NONE OF THIS IS SAFE OMG
