@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	VizDir      = "./filecoin-network-viz/viz-circle"
+	VizDir      = "./filecoin-network-viz/"
 	ExplorerDir = "./filecoin-explorer/build"
 )
 
