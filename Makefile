@@ -10,7 +10,7 @@ install:
 test:
 	go test ./...
 
-run: build
+run:
 	filnetsim/filnetsim
 
 runDebug: build
