@@ -1,5 +1,5 @@
 #!/bin/bash
-echo "Init 2 nodes"
+echo "Init 3 nodes"
 read -p "."
 iptb init --type=filecoin --count 3 --bootstrap=skip --deployment=local
 
