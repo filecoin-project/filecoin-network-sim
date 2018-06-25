@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	VizDir      = "./filecoin-network-viz/viz-circle"
+	VizDir      = "./filecoin-network-viz"
 	ExplorerDir = "./filecoin-explorer/build"
 )
 
@@ -95,7 +95,9 @@ func runService(ctx context.Context) error {
 	}()
 
 	// run http
-	fmt.Println("Listening at http://127.0.0.1:7002/logs")
+	fmt.Println("Logs at http://127.0.0.1:7002/logs")
+	fmt.Println("Network Viz at http://127.0.0.1:7002/viz-circle")
+	fmt.Println("Chain Viz at http://127.0.0.1:7002/viz-blockchain")
 	return http.ListenAndServe(":7002", muxA)
 }
 

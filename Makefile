@@ -23,9 +23,11 @@ frontend: submodules viz explorer
 
 viz: $(VIZ_NODE_MODULES)
 	(cd filecoin-network-viz/viz-circle; yarn run build)
+	(cd filecoin-network-viz/viz-blockchain; yarn run build)
 
 $(VIZ_NODE_MODULES):
 	(cd filecoin-network-viz/viz-circle; yarn install)
+	(cd filecoin-network-viz/viz-blockchain; yarn install)
 
 explorer: $(EXPLORER_NODE_MODULES)
 	(cd filecoin-explorer; yarn run build)
