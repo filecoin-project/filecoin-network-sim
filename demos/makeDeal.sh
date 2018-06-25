@@ -62,6 +62,11 @@ echo "node 1 checks the orderbook deals"
 read -p "."
 iptb run 1 go-filecoin orderbook deals | jq
 
+echo "node 1 shows the contents of file in deal"
+read -p "."
+iptb run 1 go-filecoin client cat "$dataRef"
+read -p "."
+
 echo "this concludes the demo"
 read -p "Press enter to shutdown, or open a new terminal and play with this state"
 iptb kill
