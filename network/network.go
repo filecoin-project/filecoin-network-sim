@@ -60,7 +60,7 @@ func NewNode(d *daemon.Daemon, id string, t NodeType) (*Node, error) {
 		return nil, err
 	}
 
-	fmt.Printf("**** Created Node with MainWalletAddress: %s\n", addr)
+	fmt.Printf("-> Created Node with MainWalletAddress: %s\n", addr)
 	return n, nil
 }
 
@@ -89,6 +89,10 @@ func (n *Node) CreateOrGetMinerIdentity() (string, error) {
 
 func (n *Node) GetMinerIdentity() string {
 	return n.MinerAddr
+}
+
+func (n *Node) MatchesType(t NodeType) bool {
+	return t == AnyNodeType || n.Type == t
 }
 
 type Network struct {
@@ -253,7 +257,7 @@ func (n *Network) GetNodesOfType(t NodeType) []*Node {
 
 	var nodes []*Node
 	for _, node := range n.nodes {
-		if t == AnyNodeType || node.Type == t {
+		if node.MatchesType(t) {
 			nodes = append(nodes, node)
 		}
 	}
@@ -273,29 +277,16 @@ func (n *Network) GetRandomNode(t NodeType) *Node {
 
 func (n *Network) GetRandomNodes(t NodeType, num int) []*Node {
 	nodes := n.GetNodesOfType(t)
-
-	l := len(nodes)
-	if l == 0 {
+	if len(nodes) == 0 {
 		return nil
 	}
-
 	if len(nodes) < num {
-		return nil
+		num = len(nodes)
 	}
 
-	// use a set to sample different nodes.
-	nodeSet := map[*Node]struct{}{}
-	for len(nodeSet) < num {
-		nd := nodes[rand.Intn(len(nodes))]
-		nodeSet[nd] = struct{}{}
-	}
-
-	var nodeList []*Node
-	for k, _ := range nodeSet {
-		nodeList = append(nodeList, k)
-	}
-
-	return nodeList
+	// shuffle first, then output.
+	rand.Shuffle(len(nodes), func(i, j int) { nodes[i], nodes[j] = nodes[j], nodes[i] })
+	return nodes[:num]
 }
 
 func (n *Network) ShutdownAll() error {

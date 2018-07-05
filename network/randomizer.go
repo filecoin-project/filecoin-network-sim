@@ -2,6 +2,7 @@ package network
 
 import (
 	"context"
+	"reflect"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -24,16 +25,25 @@ const (
 	ActionSendFile
 )
 
+type Args struct {
+	MaxNodes int
+	ForkBranching int
+	ForkProbability float64
+	JoinTime time.Duration
+	BlockTime time.Duration
+	ActionTime time.Duration
+}
+
 type Randomizer struct {
 	Net *Network
-
-	TotalNodes int
-	BlockTime  time.Duration
-	ActionTime time.Duration
+	Args Args
 	Actions    []Action
 }
 
 func (r *Randomizer) Run(ctx context.Context) {
+	fmt.Println("\nRandomizer running with params:")
+	fmt.Println(StructToString(&r.Args))
+
 	go r.addAndRemoveNodes(ctx)
 	go r.mineBlocks(ctx)
 	go r.randomActions(ctx)
@@ -54,10 +64,10 @@ func (r *Randomizer) periodic(ctx context.Context, t time.Duration, periodicFunc
 }
 
 func (r *Randomizer) addAndRemoveNodes(ctx context.Context) {
-	r.periodic(ctx, r.BlockTime*4, func(ctx context.Context) {
+	r.periodic(ctx, r.Args.JoinTime, func(ctx context.Context) {
 		go func() {
 			size := r.Net.Size()
-			if size < r.TotalNodes {
+			if size < r.Args.MaxNodes {
 				t := AnyNodeType
 				if size < 2 {
 					t = MinerNodeType
@@ -69,21 +79,42 @@ func (r *Randomizer) addAndRemoveNodes(ctx context.Context) {
 	})
 }
 
+func rollToMine(probability float64) bool {
+	if probability < 0.001 {
+		return false
+	}
+	if probability > 0.999 {
+		return true
+	}
+
+	roll := rand.Float64()
+	fmt.Printf("probability roll: %f < %f\n", roll, probability)
+	return  roll < probability
+}
+
 // Only miners should mine block
 func (r *Randomizer) mineBlocks(ctx context.Context) {
-	r.periodic(ctx, r.BlockTime, func(ctx context.Context) {
-		n := r.Net.GetRandomNode(AnyNodeType)
-		if n == nil {
-			return
+	epoch := -1 // so next one is 0.
+	r.periodic(ctx, r.Args.BlockTime, func(ctx context.Context) {
+		epoch++
+
+		// once per ForkBranching.
+		// do it this way, to sample without replacement and deal with the case
+		// where there are (N < ForkBranching) nodes in the network.
+		nds := r.Net.GetRandomNodes(AnyNodeType, r.Args.ForkBranching)
+		fmt.Printf("epoch %d: %d rolls to mine\n", epoch, len(nds))
+		for _, n := range nds {
+			if rollToMine(r.Args.ForkProbability) {
+				go func() {
+					logErr(n.Daemon.MiningOnce())
+				}()
+			}
 		}
-		go func() {
-			logErr(n.Daemon.MiningOnce())
-		}()
 	})
 }
 
 func (r *Randomizer) randomActions(ctx context.Context) {
-	r.periodic(ctx, r.ActionTime, func(ctx context.Context) {
+	r.periodic(ctx, r.Args.ActionTime, func(ctx context.Context) {
 		action := r.Actions[rand.Intn(len(r.Actions))]
 		go r.doRandomAction(ctx, action)
 	})
@@ -133,7 +164,7 @@ func (r *Randomizer) doActionPayment(ctx context.Context) {
 	}
 
 	// if does not succeed in 3 block times, it's hung on an error
-	ctx, _ = context.WithTimeout(ctx, r.BlockTime*3)
+	ctx, _ = context.WithTimeout(ctx, r.Args.BlockTime*3)
 	logErr(nds[0].Daemon.SendFilecoin(ctx, a1, a2, amtToSend))
 	return
 }
@@ -381,4 +412,15 @@ func logErr(err error) {
 	if err != nil {
 		log.Printf("[RAND]\t ERROR: %s\n", err.Error())
 	}
+}
+
+func StructToString(v interface{}) string {
+	str := ""
+	s := reflect.ValueOf(v).Elem()
+	typeOfT := s.Type()
+	for i := 0; i < s.NumField(); i++ {
+	  f := s.Field(i)
+	  str += fmt.Sprintf("%s: %v\n", typeOfT.Field(i).Name, f.Interface())
+	}
+	return str
 }

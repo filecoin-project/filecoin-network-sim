@@ -19,13 +19,35 @@ const (
 	ExplorerDir = "./filecoin-explorer/build"
 )
 
-var opts = struct {
+type Args struct {
 	Debug bool
-}{}
+	NetArgs network.Args
+}
 
-func init() {
-	flag.BoolVar(&opts.Debug, "debug", false, "turns on debug logging")
+var argDefaults = Args{
+	Debug: false,
+	NetArgs: network.Args{
+		MaxNodes: 25,
+		JoinTime: 3 * time.Second * 4, // 4x the block time
+		BlockTime: 3 * time.Second,
+		ActionTime: 1 * time.Second,
+		ForkBranching: 1,
+		ForkProbability: 1.0,
+	},
+}
+
+func parseArgs() Args {
+	a := Args{}
+	flag.BoolVar(&a.Debug, "debug", argDefaults.Debug, "turns on debug logging")
+	flag.DurationVar(&a.NetArgs.BlockTime, "t-block", argDefaults.NetArgs.BlockTime, "block time")
+	flag.DurationVar(&a.NetArgs.ActionTime, "t-action", argDefaults.NetArgs.ActionTime, "how fast actions are taken")
+	flag.DurationVar(&a.NetArgs.JoinTime, "t-join", argDefaults.NetArgs.JoinTime, "how fast new nodes are added")
+	flag.IntVar(&a.NetArgs.ForkBranching, "fork-branching", argDefaults.NetArgs.ForkBranching, "miners sampling per round")
+	flag.Float64Var(&a.NetArgs.ForkProbability, "fork-probability", argDefaults.NetArgs.ForkProbability, "miners sampling probability (-1 = 1/n)")
+	flag.IntVar(&a.NetArgs.MaxNodes, "max-nodes", argDefaults.NetArgs.MaxNodes, "max number of nodes")
 	flag.Parse()
+
+	return a
 }
 
 type Instance struct {
@@ -34,7 +56,7 @@ type Instance struct {
 	L io.Reader
 }
 
-func SetupInstance() (*Instance, error) {
+func SetupInstance(args Args) (*Instance, error) {
 	dir, err := ioutil.TempDir("", "filnetsim")
 	if err != nil {
 		dir = "/tmp/filnetsim"
@@ -46,10 +68,8 @@ func SetupInstance() (*Instance, error) {
 	}
 
 	r := network.Randomizer{
-		Net:        n,
-		TotalNodes: 25,
-		BlockTime:  3 * time.Second,
-		ActionTime: 1000 * time.Millisecond,
+		Net:     n,
+		Args:    args.NetArgs,
 		Actions: []network.Action{
 			network.ActionPayment,
 			network.ActionAsk,
@@ -70,8 +90,8 @@ func (i *Instance) Run(ctx context.Context) {
 	<-ctx.Done()
 }
 
-func runService(ctx context.Context) error {
-	i, err := SetupInstance()
+func runService(ctx context.Context, args Args) error {
+	i, err := SetupInstance(args)
 	if err != nil {
 		return err
 	}
@@ -101,10 +121,10 @@ func runService(ctx context.Context) error {
 	return http.ListenAndServe(":7002", muxA)
 }
 
-func run() error {
+func run(args Args) error {
 
 	// handle options
-	if opts.Debug {
+	if args.Debug {
 		log.SetOutput(os.Stderr)
 	} else {
 		log.SetOutput(ioutil.Discard)
@@ -115,11 +135,11 @@ func run() error {
 		return fmt.Errorf("must be run from directory with %s\n", VizDir)
 	}
 
-	return runService(context.Background())
+	return runService(context.Background(), args)
 }
 
 func main() {
-	if err := run(); err != nil {
+	if err := run(parseArgs()); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %s\n", err)
 		os.Exit(1)
 	}
