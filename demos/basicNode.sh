@@ -1,45 +1,64 @@
 #!/bin/bash
-echo "Init 1 node"
-read -p "."
-iptb init --type=filecoin --count 1 --bootstrap=skip --deployment=local
 
-echo "Start 1 node"
-read -p "."
+pretty() {
+  while read line; do
+     echo "$line" | underscore print --color --wrapwidth 200
+  done
+}
+
+pause() {
+  read
+}
+
+_step=0
+step() {
+  _step=$(($_step + 1))
+  printf "\n# Step $_step: $@"
+  pause
+}
+
+step "Init 1 node"
+iptb init --type=filecoin --count 1 --bootstrap=skip --deployment=local -f
+
+step "Start 1 node"
 iptb start
 
-echo "Nodes PeerID"
+step "Nodes PeerID"
 iptb run 0 go-filecoin id
 
-echo "Swarm peers to show no connections"
-read -p "."
+step "Swarm peers to show no connections"
 iptb run 0 go-filecoin swarm peers
-echo
+step
 
 # show the chain state
 ## chain explorer
-echo "View The Chain Explorer"
-read -p "."
+step "View The Chain Explorer"
+echo "http://localhost:..."
 
-echo look ma, a chain
-iptb run 0 go-filecoin chain ls --enc=json | jq
-read -p "."
+step "look ma, a chain"
+iptb run 0 go-filecoin mining once
+iptb run 0 go-filecoin mining once
+iptb run 0 go-filecoin mining once
+iptb run 0 go-filecoin chain ls --enc=json | pretty
 
-echo a block data structure
-genCid=$(iptb run 0 go-filecoin chain head --enc=json | jq '."/"' | tr -d '"')
-iptb run 0 go-filecoin dag get "$genCid" --enc=json | jq
-read -p "."
+step "mine a single block"
+iptb run 0 go-filecoin mining once
 
-echo Pull out nonce from block "$genCid"
-iptb run 0 go-filecoin dag get "$genCid"/nonce | jq '.' # If you want to get messages create some then mine, else messages is niil
-read -p "."
+step "a block data structure"
+genCid=$(iptb run 0 go-filecoin chain head)
+iptb run 0 go-filecoin dag get "$genCid" --enc=json | pretty
+
+step "Pull out nonce from block $genCid"
+iptb run 0 go-filecoin dag get "zDPWYqFCx2A53BRSx8G26hns41QWnzWvPD64djNAfsgyDG7jnpWs/nonce"
+iptb run 0 go-filecoin dag get "$genCid"/nonce | jq '.' | pretty
+# If you want to get messages create some then mine, else messages is niil
 # show the coinbase
 # this is just the zero-th tx
 
-echo check wallet balance
+step "check wallet balance"
 wallet0=$(iptb run 0 go-filecoin wallet addrs ls | tail -n1)
 iptb run 0 go-filecoin wallet balance $wallet0
-read -p "."
 
-echo Press enter to kill the demo
-read -p "."
+step "Press enter to kill the demo"
 iptb kill
+echo ""
