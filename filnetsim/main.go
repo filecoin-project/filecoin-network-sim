@@ -31,7 +31,7 @@ var argDefaults = Args{
 		MaxNodes: 15,
 		JoinTime: 3 * time.Second * 4, // 4x the block time
 		BlockTime: 3 * time.Second,
-		ActionTime: 1 * time.Second,
+		ActionTime: 300 * time.Millisecond,
 		ForkBranching: 1,
 		ForkProbability: 1.0,
 	},

@@ -190,7 +190,7 @@ func (r *Randomizer) doActionPayment(ctx context.Context) {
 
 func (r *Randomizer) doActionAsk(ctx context.Context) {
 	var size = 32 + rand.Intn(16)
-	var price = rand.Intn(13) + 15
+	var price = rand.Intn(13) + 13
 
 	nd := r.Net.GetRandomNode(MinerNodeType)
 	if nd == nil {
@@ -364,7 +364,7 @@ func extractAsks(input string) ([]sm.Ask, error) {
 	as := strings.Split(o, "\n")
 	log.Printf("[RAND] extractAsks: asks of length %d: %v\n", len(as), as)
 	if len(as) <= 1 {
-		return nil, fmt.Errorf("No Asks yes")
+		return nil, fmt.Errorf("No Asks yet")
 	}
 
 	var asks []sm.Ask
