@@ -150,7 +150,7 @@ func (r *Randomizer) mineBlocks(ctx context.Context) {
 		// once per ForkBranching.
 		// do it this way, to sample without replacement and deal with the case
 		// where there are (N < ForkBranching) nodes in the network.
-		nds := r.Net.GetRandomNodes(AnyNodeType, r.Args.ForkBranching)
+		nds := r.Net.GetRandomNodes(MinerNodeType, r.Args.ForkBranching)
 		// fmt.Printf("epoch %d: %d to mine\n", epoch, len(nds))
 		var wg sync.WaitGroup
 		for _, n := range nds {
@@ -158,7 +158,6 @@ func (r *Randomizer) mineBlocks(ctx context.Context) {
 				wg.Add(1)
 				go func() {
 					defer wg.Done()
-					// _ = n
 					logErr(n.Daemon.MiningOnce())
 				}()
 			}
@@ -193,8 +192,9 @@ func (r *Randomizer) doRandomAction(ctx context.Context, a Action) {
 }
 
 func (r *Randomizer) doActionPayment(ctx context.Context) {
-	var amtToSend = 5
-	nds := r.Net.GetRandomNodes(ClientNodeType, 2)
+	var amtToSend = 5000
+
+	nds := r.Net.GetRandomNodes(AnyNodeType, 2)
 	if len(nds) < 2 || nds[0] == nil || nds[1] == nil {
 		log.Print("[RAND]\t not enough nodes for random actions")
 		return

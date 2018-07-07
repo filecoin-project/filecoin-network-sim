@@ -25,6 +25,7 @@ var tmplNodeAdded *template.Template
 
 type tmplNodeAddedData struct {
 	WalletAddr string
+	MinerAddr  string
 	SwarmAddr  string
 	ApiAddr    string
 	Type       NodeType
@@ -33,7 +34,8 @@ type tmplNodeAddedData struct {
 func init() {
 	var err error
 	tmplNodeAdded, err = template.New("tmplnodeadded").Parse(`-> Created New Node: {{.Type}}
-	MainWalletAddress: {{.WalletAddr}}
+	main wallet address: {{.WalletAddr}}
+	miner actor address: {{.MinerAddr}}
 	go-filecoin swarm connect {{.SwarmAddr}}
 	go-filecoin --cmdapiaddr={{.ApiAddr}}
 `)
@@ -83,21 +85,9 @@ func NewNode(d *daemon.Daemon, id string, t NodeType) (*Node, error) {
 		ID:         id,
 		Type:       t,
 		WalletAddr: addr,
+		MinerAddr:  "",
 		SwarmAddr:  saddr,
 	}
-
-	// jbenet: this is bad v
-	// // All nodes must mine at least once to participate
-	// if err := n.MiningOnce(); err != nil {
-	// 	return nil, err
-	// }
-
-	tmplNodeAdded.Execute(os.Stdout, tmplNodeAddedData{
-		WalletAddr: addr,
-		SwarmAddr: saddr,
-		ApiAddr: d.CmdAddr,
-		Type: t,
-	})
 
 	return n, nil
 }
@@ -222,6 +212,22 @@ func (n *Network) AddNode(t NodeType) (*Node, error) {
 	eventMap["cmdAddr"] = node.CmdAddr
 
 	node.Logs().WriteEvent(eventMap)
+
+	// need some $ ...
+	if err := node.MiningOnce(); err != nil {
+		return nil, err
+	}
+	if node.Type == MinerNodeType {
+		node.CreateOrGetMinerIdentity() // sets n.MinerAddr
+	}
+
+	tmplNodeAdded.Execute(os.Stdout, tmplNodeAddedData{
+		WalletAddr: node.WalletAddr,
+		MinerAddr: node.MinerAddr,
+		SwarmAddr: node.SwarmAddr,
+		ApiAddr: node.Daemon.CmdAddr,
+		Type: node.Type,
+	})
 
 	log.Printf("[NET]\t added a new node to the network: %s Address: %s\n", node.ID, node.WalletAddr)
 	return node, nil
