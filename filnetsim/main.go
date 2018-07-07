@@ -27,7 +27,8 @@ type Args struct {
 var argDefaults = Args{
 	Debug: false,
 	NetArgs: network.Args{
-		MaxNodes: 25,
+		StartNodes: 3,
+		MaxNodes: 15,
 		JoinTime: 3 * time.Second * 4, // 4x the block time
 		BlockTime: 3 * time.Second,
 		ActionTime: 1 * time.Second,
@@ -45,6 +46,7 @@ func parseArgs() Args {
 	flag.IntVar(&a.NetArgs.ForkBranching, "fork-branching", argDefaults.NetArgs.ForkBranching, "miners sampling per round")
 	flag.Float64Var(&a.NetArgs.ForkProbability, "fork-probability", argDefaults.NetArgs.ForkProbability, "miners sampling probability (-1 = 1/n)")
 	flag.IntVar(&a.NetArgs.MaxNodes, "max-nodes", argDefaults.NetArgs.MaxNodes, "max number of nodes")
+	flag.IntVar(&a.NetArgs.StartNodes, "start-nodes", argDefaults.NetArgs.StartNodes, "starting number of nodes")
 	flag.Parse()
 
 	return a

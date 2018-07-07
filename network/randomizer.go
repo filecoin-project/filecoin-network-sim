@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"sync"
 
 	sm "github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 )
@@ -26,6 +27,7 @@ const (
 )
 
 type Args struct {
+	StartNodes int
 	MaxNodes int
 	ForkBranching int
 	ForkProbability float64
@@ -63,32 +65,31 @@ func (r *Randomizer) periodic(ctx context.Context, t time.Duration, periodicFunc
 	}
 }
 
+func nextRandomType(n *Network) NodeType {
+	c := n.GetNodeCounts()
+	if float64(c[ClientNodeType]) < (float64(c[MinerNodeType]) * 1.5) {
+		return ClientNodeType
+	}
+
+	return AnyNodeType
+}
+
 func (r *Randomizer) addAndRemoveNodes(ctx context.Context) {
-	// add 3 miner nodes at the beginning, to get going faster
-	r.Net.AddNode(MinerNodeType)
-	r.Net.AddNode(MinerNodeType)
-	r.Net.AddNode(MinerNodeType)
+	// add nodes at the beginning, to get going faster
+	fmt.Printf("starting with %d nodes\n", r.Args.StartNodes)
+	for i := 0; i < r.Args.StartNodes; i++ {
+		go r.Net.AddNode(AnyNodeType)
+	}
 
+	// periodically add more nodes
 	r.periodic(ctx, r.Args.JoinTime, func(ctx context.Context) {
-		go func() {
-			size := r.Net.Size()
-			if size >= r.Args.MaxNodes {
-				return // already at max.
-			}
+		if r.Net.Size() >= r.Args.MaxNodes {
+			return
+		}
 
-			t := AnyNodeType
-			if size < 2 {
-				t = MinerNodeType
-			} else {
-				c := r.Net.GetNodeCounts()
-				if float64(c[ClientNodeType]) < (float64(c[MinerNodeType]) * 1.5) {
-					t = ClientNodeType
-				}
-			}
-
-			_, err := r.Net.AddNode(t)
-			logErr(err)
-		}()
+		t := nextRandomType(r.Net)
+		_, err := r.Net.AddNode(t)
+		logErr(err)
 	})
 }
 
@@ -116,13 +117,18 @@ func (r *Randomizer) mineBlocks(ctx context.Context) {
 		// where there are (N < ForkBranching) nodes in the network.
 		nds := r.Net.GetRandomNodes(AnyNodeType, r.Args.ForkBranching)
 		fmt.Printf("epoch %d: %d rolls to mine\n", epoch, len(nds))
+		var wg sync.WaitGroup
 		for _, n := range nds {
 			if rollToMine(r.Args.ForkProbability) {
+				wg.Add(1)
 				go func() {
+					defer wg.Done()
+					// _ = n
 					logErr(n.Daemon.MiningOnce())
 				}()
 			}
 		}
+		wg.Wait()
 	})
 }
 
