@@ -354,7 +354,7 @@ func (l *SimLogger) convertEL2SL(el map[string]interface{}) []map[string]interfa
 			e["data"] = string(data) //cid
 			return joinSimEvent(e)
 
-		case "sendMessage":
+		case "": // no method.
 			e := newSimEvent(getStrSafe(tags, "from"))
 			e["type"] = "SendPayment"
 			e["to"] = message.To.String()
