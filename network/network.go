@@ -55,10 +55,11 @@ func NewNode(d *daemon.Daemon, id string, t NodeType) (*Node, error) {
 		WalletAddr: addr,
 	}
 
-	// All nodes must mine at least once to participate
-	if err := n.MiningOnce(); err != nil {
-		return nil, err
-	}
+	// jbenet: this is bad v
+	// // All nodes must mine at least once to participate
+	// if err := n.MiningOnce(); err != nil {
+	// 	return nil, err
+	// }
 
 	fmt.Printf("-> Created Node with MainWalletAddress: %s\n", addr)
 	return n, nil
@@ -262,6 +263,17 @@ func (n *Network) GetNodesOfType(t NodeType) []*Node {
 		}
 	}
 	return nodes
+}
+
+func (n *Network) GetNodeCounts() map[NodeType]int {
+	n.lk.Lock()
+	defer n.lk.Unlock()
+
+	m := make(map[NodeType]int)
+	for _, node := range n.nodes {
+		m[node.Type] = m[node.Type] + 1
+	}
+	return m
 }
 
 func (n *Network) GetRandomNode(t NodeType) *Node {

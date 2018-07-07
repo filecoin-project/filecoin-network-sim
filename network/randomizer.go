@@ -64,17 +64,30 @@ func (r *Randomizer) periodic(ctx context.Context, t time.Duration, periodicFunc
 }
 
 func (r *Randomizer) addAndRemoveNodes(ctx context.Context) {
+	// add 3 miner nodes at the beginning, to get going faster
+	r.Net.AddNode(MinerNodeType)
+	r.Net.AddNode(MinerNodeType)
+	r.Net.AddNode(MinerNodeType)
+
 	r.periodic(ctx, r.Args.JoinTime, func(ctx context.Context) {
 		go func() {
 			size := r.Net.Size()
-			if size < r.Args.MaxNodes {
-				t := AnyNodeType
-				if size < 2 {
-					t = MinerNodeType
-				}
-				_, err := r.Net.AddNode(t)
-				logErr(err)
+			if size >= r.Args.MaxNodes {
+				return // already at max.
 			}
+
+			t := AnyNodeType
+			if size < 2 {
+				t = MinerNodeType
+			} else {
+				c := r.Net.GetNodeCounts()
+				if float64(c[ClientNodeType]) < (float64(c[MinerNodeType]) * 1.5) {
+					t = ClientNodeType
+				}
+			}
+
+			_, err := r.Net.AddNode(t)
+			logErr(err)
 		}()
 	})
 }
