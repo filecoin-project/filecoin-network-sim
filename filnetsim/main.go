@@ -34,6 +34,14 @@ var argDefaults = Args{
 		ActionTime: 300 * time.Millisecond,
 		ForkBranching: 1,
 		ForkProbability: 1.0,
+		TestfilesDir: "testfiles",
+		Actions: network.ActionArgs{
+			Ask: true,
+			Bid: true,
+			Deal: true,
+			Payment: true,
+			Mine: true,
+		},
 	},
 }
 
@@ -47,6 +55,14 @@ func parseArgs() Args {
 	flag.Float64Var(&a.NetArgs.ForkProbability, "fork-probability", argDefaults.NetArgs.ForkProbability, "miners sampling probability (-1 = 1/n)")
 	flag.IntVar(&a.NetArgs.MaxNodes, "max-nodes", argDefaults.NetArgs.MaxNodes, "max number of nodes")
 	flag.IntVar(&a.NetArgs.StartNodes, "start-nodes", argDefaults.NetArgs.StartNodes, "starting number of nodes")
+	flag.StringVar(&a.NetArgs.TestfilesDir, "test-files", argDefaults.NetArgs.TestfilesDir, "directory with test files")
+
+	flag.BoolVar(&a.NetArgs.Actions.Ask, "auto-asks", argDefaults.NetArgs.Actions.Ask, "whether to auto generate asks")
+	flag.BoolVar(&a.NetArgs.Actions.Bid, "auto-bids", argDefaults.NetArgs.Actions.Bid, "whether to auto generate bids")
+	flag.BoolVar(&a.NetArgs.Actions.Deal, "auto-deals", argDefaults.NetArgs.Actions.Deal, "whether to auto generate deals")
+	flag.BoolVar(&a.NetArgs.Actions.Payment, "auto-payments", argDefaults.NetArgs.Actions.Payment, "whether to auto generate payments")
+	flag.BoolVar(&a.NetArgs.Actions.Mine, "auto-mining", argDefaults.NetArgs.Actions.Mine, "whether to auto ")
+
 	flag.Parse()
 
 	return a
@@ -54,7 +70,7 @@ func parseArgs() Args {
 
 type Instance struct {
 	N *network.Network
-	R network.Randomizer
+	R *network.Randomizer
 	L io.Reader
 }
 
@@ -69,17 +85,7 @@ func SetupInstance(args Args) (*Instance, error) {
 		return nil, err
 	}
 
-	r := network.Randomizer{
-		Net:     n,
-		Args:    args.NetArgs,
-		Actions: []network.Action{
-			network.ActionPayment,
-			network.ActionAsk,
-			network.ActionBid,
-			network.ActionDeal,
-		},
-	}
-
+	r := network.NewRandomizer(n, args.NetArgs)
 	l := n.Logs().Reader()
 	return &Instance{n, r, l}, nil
 }

@@ -6,6 +6,8 @@ import (
 	"math/rand"
 	"path/filepath"
 	"sync"
+	"os"
+	"text/template"
 
 	logs "github.com/filecoin-project/filecoin-network-sim/logs"
 	daemon "github.com/filecoin-project/go-filecoin/testhelpers"
@@ -18,6 +20,27 @@ const (
 	ClientNodeType NodeType = "Client"
 	AnyNodeType    NodeType = "Node"
 )
+
+var tmplNodeAdded *template.Template
+
+type tmplNodeAddedData struct {
+	WalletAddr string
+	SwarmAddr  string
+	ApiAddr    string
+	Type       NodeType
+}
+
+func init() {
+	var err error
+	tmplNodeAdded, err = template.New("tmplnodeadded").Parse(`-> Created New Node: {{.Type}}
+	MainWalletAddress: {{.WalletAddr}}
+	go-filecoin swarm connect {{.SwarmAddr}}
+	go-filecoin --cmdapiaddr={{.ApiAddr}}
+`)
+	if err != nil {
+		panic(err)
+	}
+}
 
 func RandomNodeType() NodeType {
 	switch rand.Intn(2) {
@@ -36,6 +59,7 @@ type Node struct {
 	ID         string
 	WalletAddr string // ClientAddr
 	MinerAddr  string
+	SwarmAddr  string
 	sl         *logs.SimLogger
 }
 
@@ -48,11 +72,18 @@ func NewNode(d *daemon.Daemon, id string, t NodeType) (*Node, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	saddr, err := d.GetAddress()
+	if err != nil {
+		return nil, err
+	}
+
 	n := &Node{
 		Daemon:     d,
 		ID:         id,
 		Type:       t,
 		WalletAddr: addr,
+		SwarmAddr:  saddr,
 	}
 
 	// jbenet: this is bad v
@@ -61,7 +92,13 @@ func NewNode(d *daemon.Daemon, id string, t NodeType) (*Node, error) {
 	// 	return nil, err
 	// }
 
-	fmt.Printf("-> Created Node with MainWalletAddress: %s\n", addr)
+	tmplNodeAdded.Execute(os.Stdout, tmplNodeAddedData{
+		WalletAddr: addr,
+		SwarmAddr: saddr,
+		ApiAddr: d.CmdAddr,
+		Type: t,
+	})
+
 	return n, nil
 }
 
@@ -170,7 +207,7 @@ func (n *Network) AddNode(t NodeType) (*Node, error) {
 	// TODO
 	n.ConnectNodeToAll(node)
 
-	// we want realistic sim. lots of actions gated by 1-at-atime consesnus
+	// frrist: we want realistic sim. lots of actions gated by 1-at-atime consesnus
 	node.Daemon.SetWaitMining(false)
 
 	// add miner to our list.

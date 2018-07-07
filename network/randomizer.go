@@ -5,7 +5,6 @@ import (
 	"reflect"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"math/rand"
 	"sort"
@@ -14,6 +13,8 @@ import (
 	"sync"
 
 	sm "github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
+
+	randfile "github.com/filecoin-project/filecoin-network-sim/randfile"
 )
 
 type Action int
@@ -34,12 +35,42 @@ type Args struct {
 	JoinTime time.Duration
 	BlockTime time.Duration
 	ActionTime time.Duration
+	TestfilesDir string
+	Actions ActionArgs
+}
+
+type ActionArgs struct {
+	Ask bool
+	Bid bool
+	Deal bool
+	Payment bool
+	Mine bool
 }
 
 type Randomizer struct {
 	Net *Network
 	Args Args
-	Actions    []Action
+	Actions []Action
+}
+
+func NewRandomizer(n *Network, a Args) *Randomizer {
+	r := &Randomizer{
+		Net:     n,
+		Args:    a,
+		Actions: []Action{},
+	}
+
+	addif := func(t bool, a Action) {
+		if t {
+			r.Actions = append(r.Actions, a)
+		}
+	}
+	addif(a.Actions.Ask, ActionAsk)
+	addif(a.Actions.Bid, ActionBid)
+	addif(a.Actions.Deal, ActionDeal)
+	addif(a.Actions.Payment, ActionPayment)
+
+	return r
 }
 
 func (r *Randomizer) Run(ctx context.Context) {
@@ -78,7 +109,11 @@ func (r *Randomizer) addAndRemoveNodes(ctx context.Context) {
 	// add nodes at the beginning, to get going faster
 	fmt.Printf("starting with %d nodes\n", r.Args.StartNodes)
 	for i := 0; i < r.Args.StartNodes; i++ {
-		go r.Net.AddNode(AnyNodeType)
+		t := ClientNodeType
+		if i % 2 == 0 {
+			t = MinerNodeType
+		}
+		go r.Net.AddNode(t)
 	}
 
 	// periodically add more nodes
@@ -102,7 +137,7 @@ func rollToMine(probability float64) bool {
 	}
 
 	roll := rand.Float64()
-	fmt.Printf("probability roll: %f < %f\n", roll, probability)
+	// fmt.Printf("probability roll: %f < %f\n", roll, probability)
 	return  roll < probability
 }
 
@@ -116,7 +151,7 @@ func (r *Randomizer) mineBlocks(ctx context.Context) {
 		// do it this way, to sample without replacement and deal with the case
 		// where there are (N < ForkBranching) nodes in the network.
 		nds := r.Net.GetRandomNodes(AnyNodeType, r.Args.ForkBranching)
-		fmt.Printf("epoch %d: %d rolls to mine\n", epoch, len(nds))
+		// fmt.Printf("epoch %d: %d to mine\n", epoch, len(nds))
 		var wg sync.WaitGroup
 		for _, n := range nds {
 			if rollToMine(r.Args.ForkProbability) {
@@ -134,6 +169,10 @@ func (r *Randomizer) mineBlocks(ctx context.Context) {
 
 func (r *Randomizer) randomActions(ctx context.Context) {
 	r.periodic(ctx, r.Args.ActionTime, func(ctx context.Context) {
+		if len(r.Actions) < 1 {
+			return
+		}
+
 		action := r.Actions[rand.Intn(len(r.Actions))]
 		go r.doRandomAction(ctx, action)
 	})
@@ -189,8 +228,8 @@ func (r *Randomizer) doActionPayment(ctx context.Context) {
 }
 
 func (r *Randomizer) doActionAsk(ctx context.Context) {
-	var size = 32 + rand.Intn(16)
-	var price = rand.Intn(13) + 13
+	size := (rand.Intn(16) + 1) + 30 // ~MB
+	price := rand.Intn(13) + 13
 
 	nd := r.Net.GetRandomNode(MinerNodeType)
 	if nd == nil {
@@ -204,13 +243,15 @@ func (r *Randomizer) doActionAsk(ctx context.Context) {
 		return
 	}
 
+	log.Printf("adding ask: %s %d %d", from, size, price)
 	logErr(nd.Daemon.MinerAddAsk(ctx, from, size, price))
 	return
 }
 
 func (r *Randomizer) doActionBid(ctx context.Context) {
-	var size = 32 + rand.Intn(16)
-	var price = rand.Intn(17) + 1
+	// size := (rand.Intn(16) + 1) * (1 << 20) // ~MB
+	size := (rand.Intn(16) + 1) + 30
+	price := rand.Intn(17) + 1
 
 	nd := r.Net.GetRandomNode(ClientNodeType)
 	if nd == nil {
@@ -224,6 +265,7 @@ func (r *Randomizer) doActionBid(ctx context.Context) {
 		return
 	}
 
+	log.Printf("adding bid: %s %d %d", from, size, price)
 	logErr(nd.Daemon.ClientAddBid(ctx, from, size, price))
 	return
 }
@@ -280,39 +322,28 @@ func (r *Randomizer) doActionDeal(ctx context.Context) {
 	log.Printf("[RAND] ask %d %s %s\n", ask.ID, ask.Price.String(), ask.Size.String())
 	log.Printf("[RAND] bid %d %s %s\n", bid.ID, bid.Price.String(), bid.Size.String())
 
-	// TODO put interesting info in the file like the bid and ask id
-	importFile, err := ioutil.TempFile(nd.RepoDir, "dealFile")
+	// get a randomfile
+	fp, err := randfile.RandomFile(r.Args.TestfilesDir, nd.RepoDir)
 	if err != nil {
-		panic(err)
+		logErr(err)
+		return
 	}
 
-	defer importFile.Close()
-	enc := json.NewEncoder(importFile)
-
-	enc.Encode(ask)
-	enc.Encode(bid)
-
-	// Write stuff to the file
-	out, err = nd.Daemon.ClientImport(importFile.Name())
+	out, err = nd.Daemon.ClientImport(fp)
 	if err != nil {
-		panic(err)
+		logErr(err)
+		return
 	}
 
-	out, err = nd.Daemon.ProposeDeal(ask.ID, bid.ID, out.ReadStdoutTrimNewlines())
+	cid := out.ReadStdoutTrimNewlines()
+
+	out, err = nd.Daemon.ProposeDeal(ask.ID, bid.ID, cid)
 	if err != nil {
-		panic(err)
 		logErr(err)
 		return
 	}
 
 	log.Printf("[RAND] deal proposal: %s\n", out)
-	importFile.Write([]byte(out.ReadStdout()))
-
-	/*
-		askID, err := nil, nil   // get AskID
-		bidID, err := nil, nil   // get BidID
-		dataRef, err := nil, nil // get a CID of the data to use for the deal
-	*/
 }
 
 func getBestDealPair(asks []sm.Ask, bids []sm.Bid, wallet string) (sm.Ask, sm.Bid, error) {
