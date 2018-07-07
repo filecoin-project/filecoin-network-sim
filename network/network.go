@@ -194,7 +194,6 @@ func (n *Network) AddNode(t NodeType) (*Node, error) {
 	// ok from here, we have a node, and it should work out.
 
 	// connect to other miners?
-	// TODO
 	n.ConnectNodeToAll(node)
 
 	// frrist: we want realistic sim. lots of actions gated by 1-at-atime consesnus
@@ -257,11 +256,15 @@ func (n *Network) ConnectNodeToAll(node *Node) error {
 
 	failed := 0
 	for _, n2 := range conn {
+		if n2 == nil {
+			continue // one of them will be nil
+		}
+
 		_, err := node.Connect(n2.Daemon)
-		logErr(err)
 		if err != nil {
-			panic(err)
+			logErr(err)
 			failed++
+			return err
 		}
 	}
 

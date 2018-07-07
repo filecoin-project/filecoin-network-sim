@@ -105,16 +105,37 @@ func nextRandomType(n *Network) NodeType {
 	return AnyNodeType
 }
 
-func (r *Randomizer) addAndRemoveNodes(ctx context.Context) {
-	// add nodes at the beginning, to get going faster
+func (r *Randomizer) addInitialNodes(ctx context.Context) {
 	fmt.Printf("starting with %d nodes\n", r.Args.StartNodes)
+	var wg sync.WaitGroup
 	for i := 0; i < r.Args.StartNodes; i++ {
 		t := ClientNodeType
 		if i % 2 == 0 {
 			t = MinerNodeType
 		}
-		go r.Net.AddNode(t)
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			r.Net.AddNode(t)
+		}()
 	}
+	wg.Wait()
+
+	// ensure all nodes are connected. (async start)
+	for _, n := range r.Net.GetNodesOfType(AnyNodeType) {
+		if n == nil {
+			logErr(fmt.Errorf("node is nil: %v", n))
+			continue
+		}
+
+		r.Net.ConnectNodeToAll(n)
+	}
+}
+
+func (r *Randomizer) addAndRemoveNodes(ctx context.Context) {
+	// add nodes at the beginning, to get going faster
+	r.addInitialNodes(ctx)
 
 	// periodically add more nodes
 	r.periodic(ctx, r.Args.JoinTime, func(ctx context.Context) {
