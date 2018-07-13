@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"os"
 	"path/filepath"
 	"sync"
-	"os"
 	"text/template"
 
 	logs "github.com/filecoin-project/filecoin-network-sim/logs"
@@ -222,10 +222,10 @@ func (n *Network) AddNode(t NodeType) (*Node, error) {
 
 	tmplNodeAdded.Execute(os.Stdout, tmplNodeAddedData{
 		WalletAddr: node.WalletAddr,
-		MinerAddr: node.MinerAddr,
-		SwarmAddr: node.SwarmAddr,
-		ApiAddr: node.Daemon.CmdAddr,
-		Type: node.Type,
+		MinerAddr:  node.MinerAddr,
+		SwarmAddr:  node.SwarmAddr,
+		ApiAddr:    node.Daemon.CmdAddr,
+		Type:       node.Type,
 	})
 
 	log.Printf("[NET]\t added a new node to the network: %s Address: %s\n", node.ID, node.WalletAddr)

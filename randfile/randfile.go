@@ -1,57 +1,57 @@
 package network
 
 import (
-  "io/ioutil"
-  "math/rand"
-  "path/filepath"
+	"io/ioutil"
+	"math/rand"
+	"path/filepath"
 )
 
 func RandomFile(filesdir, tmpdir string) (string, error) {
-  f, err := RandomFileTestDir(filesdir)
-  if err == nil {
-    return f, nil
-  }
-  return RandomFileText(tmpdir)
+	f, err := RandomFileTestDir(filesdir)
+	if err == nil {
+		return f, nil
+	}
+	return RandomFileText(tmpdir)
 }
 
 func RandomFileTestDir(dir string) (string, error) {
-  // check if there is a testdir locally
-  fs, err := ioutil.ReadDir(dir)
-  if err != nil {
-    return "", err // failed to read testfiles
-  }
+	// check if there is a testdir locally
+	fs, err := ioutil.ReadDir(dir)
+	if err != nil {
+		return "", err // failed to read testfiles
+	}
 
-  // random entry
-  fi := fs[rand.Intn(len(fs))]
-  fp := filepath.Join(dir, fi.Name())
-  return fp, nil
+	// random entry
+	fi := fs[rand.Intn(len(fs))]
+	fp := filepath.Join(dir, fi.Name())
+	return fp, nil
 }
 
 func RandomFileText(tmpdir string) (string, error) {
-  if tmpdir == "" {
-    tmpdir = "/tmp"
-  }
+	if tmpdir == "" {
+		tmpdir = "/tmp"
+	}
 
-  f, err := ioutil.TempFile(tmpdir, "random-file")
-  if err != nil {
-    return "", err
-  }
-  defer f.Close()
+	f, err := ioutil.TempFile(tmpdir, "random-file")
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
 
-  // write to it
-  rf := randomFiles[rand.Intn(len(randomFiles))]
-  _, err = f.Write([]byte(rf))
-  if err != nil {
-    return "", err
-  }
+	// write to it
+	rf := randomFiles[rand.Intn(len(randomFiles))]
+	_, err = f.Write([]byte(rf))
+	if err != nil {
+		return "", err
+	}
 
-  return f.Name(), nil
+	return f.Name(), nil
 }
 
 var randomFiles = []string{
-  randomFile1,
-  randomFile2,
-  randomFile3,
+	randomFile1,
+	randomFile2,
+	randomFile3,
 }
 
 const randomFile1 = `
@@ -184,4 +184,3 @@ and fair than the world your governments have made before.
 
 Davos, Switzerland February 8, 1996
 `
-

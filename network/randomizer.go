@@ -2,15 +2,15 @@ package network
 
 import (
 	"context"
-	"reflect"
 	"encoding/json"
 	"fmt"
 	"log"
 	"math/rand"
+	"reflect"
 	"sort"
 	"strings"
-	"time"
 	"sync"
+	"time"
 
 	sm "github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 
@@ -28,28 +28,28 @@ const (
 )
 
 type Args struct {
-	StartNodes int
-	MaxNodes int
-	ForkBranching int
+	StartNodes      int
+	MaxNodes        int
+	ForkBranching   int
 	ForkProbability float64
-	JoinTime time.Duration
-	BlockTime time.Duration
-	ActionTime time.Duration
-	TestfilesDir string
-	Actions ActionArgs
+	JoinTime        time.Duration
+	BlockTime       time.Duration
+	ActionTime      time.Duration
+	TestfilesDir    string
+	Actions         ActionArgs
 }
 
 type ActionArgs struct {
-	Ask bool
-	Bid bool
-	Deal bool
+	Ask     bool
+	Bid     bool
+	Deal    bool
 	Payment bool
-	Mine bool
+	Mine    bool
 }
 
 type Randomizer struct {
-	Net *Network
-	Args Args
+	Net     *Network
+	Args    Args
 	Actions []Action
 }
 
@@ -74,6 +74,7 @@ func NewRandomizer(n *Network, a Args) *Randomizer {
 }
 
 func (r *Randomizer) Run(ctx context.Context) {
+	time.Sleep(time.Millisecond * 100) // output correctly
 	fmt.Println("\nRandomizer running with params:")
 	fmt.Println(StructToString(&r.Args))
 
@@ -110,7 +111,7 @@ func (r *Randomizer) addInitialNodes(ctx context.Context) {
 	var wg sync.WaitGroup
 	for i := 0; i < r.Args.StartNodes; i++ {
 		t := ClientNodeType
-		if i % 2 == 0 {
+		if i%2 == 0 {
 			t = MinerNodeType
 		}
 
@@ -159,7 +160,7 @@ func rollToMine(probability float64) bool {
 
 	roll := rand.Float64()
 	// fmt.Printf("probability roll: %f < %f\n", roll, probability)
-	return  roll < probability
+	return roll < probability
 }
 
 // Only miners should mine block
@@ -486,12 +487,22 @@ func logErr(err error) {
 }
 
 func StructToString(v interface{}) string {
+	return StructToStringIndent(v, 0)
+}
+
+func StructToStringIndent(vi interface{}, indent int) string {
+	tabStr := strings.Repeat("\t", indent)
 	str := ""
-	s := reflect.ValueOf(v).Elem()
-	typeOfT := s.Type()
-	for i := 0; i < s.NumField(); i++ {
-	  f := s.Field(i)
-	  str += fmt.Sprintf("%s: %v\n", typeOfT.Field(i).Name, f.Interface())
+	t := reflect.TypeOf(vi).Elem()
+	v := reflect.ValueOf(vi).Elem()
+	for i := 0; i < t.NumField(); i++ {
+		fv := v.Field(i)
+		str += tabStr + t.Field(i).Name + ":"
+		if t.Field(i).Type.Kind() == reflect.Struct {
+			str += "\n" + StructToStringIndent(fv.Addr().Interface(), indent+1) + "\n"
+		} else {
+			str += fmt.Sprintf(" %v\n", fv.Interface())
+		}
 	}
 	return str
 }

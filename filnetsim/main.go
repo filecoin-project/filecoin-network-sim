@@ -20,27 +20,27 @@ const (
 )
 
 type Args struct {
-	Debug bool
+	Debug   bool
 	NetArgs network.Args
 }
 
 var argDefaults = Args{
 	Debug: false,
 	NetArgs: network.Args{
-		StartNodes: 3,
-		MaxNodes: 15,
-		JoinTime: 3 * time.Second * 4, // 4x the block time
-		BlockTime: 3 * time.Second,
-		ActionTime: 300 * time.Millisecond,
-		ForkBranching: 1,
+		StartNodes:      3,
+		MaxNodes:        15,
+		JoinTime:        3 * time.Second * 4, // 4x the block time
+		BlockTime:       3 * time.Second,
+		ActionTime:      300 * time.Millisecond,
+		ForkBranching:   1,
 		ForkProbability: 1.0,
-		TestfilesDir: "testfiles",
+		TestfilesDir:    "testfiles",
 		Actions: network.ActionArgs{
-			Ask: true,
-			Bid: true,
-			Deal: true,
+			Ask:     true,
+			Bid:     true,
+			Deal:    true,
 			Payment: true,
-			Mine: true,
+			Mine:    true,
 		},
 	},
 }
