@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"text/template"
 	"time"
 
 	network "github.com/filecoin-project/filecoin-network-sim/network"
@@ -21,11 +22,13 @@ const (
 
 type Args struct {
 	Debug   bool
+	Port    int
 	NetArgs network.Args
 }
 
 var argDefaults = Args{
 	Debug: false,
+	Port:  7002,
 	NetArgs: network.Args{
 		StartNodes:      3,
 		MaxNodes:        15,
@@ -45,23 +48,85 @@ var argDefaults = Args{
 	},
 }
 
+var Usage = `SYNOPSIS
+	filnetsim - filecoin network simulator & visualizer
+
+	filnetsim is a tool to simulate a filecoin network locally.
+	It spawns go-filecoin daemons randomly, and issues commands to them via the cli tool.
+	Then, the sim issues actions ramdomly according to the program options.
+	The sim supports connecting to individual filecoin nodes to issue commands manually.
+	The sim consumes all eventlogs and transforms them into a input logs for a visualization
+	The sim serves webapp visualizations at an http server.
+	In the future, this simulator may run across many machines.
+
+ACTIONS
+	SendPayment   sends a payment message, from one node to another (miner and client)
+	StorageAsk    send a msg to add an Ask to the Storage Market (miner only)
+	StorageBid    send a msg to add a Bid to the Storage Market (client only)
+	Deal          matches one Ask and Bid, makes a Deal between their miner and client
+	SendFiles     send deal file from client to miner (storage), or client to miner (retrieval)
+	MineBlock     advance an epoch: sample leaders, each mine a block & propagate it (miners only)
+
+OPTIONS
+  NETWORK
+	--max-nodes int            maximum number of nodes to spawn (default: {{.NetArgs.MaxNodes}})
+	--start-nodes int          number of nodes to spawn at once in the beginning (default: {{.NetArgs.StartNodes}})
+
+  TIME
+	--t-join duration          how fast new nodes are spawned (default: {{.NetArgs.JoinTime}})
+	--t-action duration        how fast to issue actions (default: {{.NetArgs.ActionTime}})
+	--t-block duration         automatic mining block time (default: {{.NetArgs.BlockTime}})
+
+  ACTIONS
+	--auto-asks bool           automatically issue StorageAsk action (default: {{.NetArgs.Actions.Ask}})
+	--auto-bids bool           automatically issue StorageBid action (default: {{.NetArgs.Actions.Bid}})
+	--auto-deals bool          automatically issue StorageDeal action (default: {{.NetArgs.Actions.Deal}})
+	--auto-mining bool         automatically mine blocks (default: {{.NetArgs.Actions.Mine}})
+	--auto-payments bool       automatically issue StorageBid action (default: {{.NetArgs.Actions.Payment}})
+
+  MINING
+	--fork-branching int       number of leaders (branches) to consider per consensus epoch (default: {{.NetArgs.ForkBranching}})
+	--fork-probability float   probability individual leaders mine a block (not power) (default: {{.NetArgs.ForkProbability}})
+
+  FILES
+	--test-files dir           directory with test files to use with SendFiles (default: {{.NetArgs.TestfilesDir}})
+
+  OTHER
+	-h, --help                 print this help text
+	--debug                    output verbose debugging logs
+	--port port                port at which to serve /logs and visualizations
+	--httptest.serve addr      if non-empty, httptest.NewServer serves on this address and blocks
+`
+
 func parseArgs() Args {
 	a := Args{}
-	flag.BoolVar(&a.Debug, "debug", argDefaults.Debug, "turns on debug logging")
-	flag.DurationVar(&a.NetArgs.BlockTime, "t-block", argDefaults.NetArgs.BlockTime, "block time")
-	flag.DurationVar(&a.NetArgs.ActionTime, "t-action", argDefaults.NetArgs.ActionTime, "how fast actions are taken")
-	flag.DurationVar(&a.NetArgs.JoinTime, "t-join", argDefaults.NetArgs.JoinTime, "how fast new nodes are added")
-	flag.IntVar(&a.NetArgs.ForkBranching, "fork-branching", argDefaults.NetArgs.ForkBranching, "miners sampling per round")
-	flag.Float64Var(&a.NetArgs.ForkProbability, "fork-probability", argDefaults.NetArgs.ForkProbability, "miners sampling probability (-1 = 1/n)")
-	flag.IntVar(&a.NetArgs.MaxNodes, "max-nodes", argDefaults.NetArgs.MaxNodes, "max number of nodes")
-	flag.IntVar(&a.NetArgs.StartNodes, "start-nodes", argDefaults.NetArgs.StartNodes, "starting number of nodes")
-	flag.StringVar(&a.NetArgs.TestfilesDir, "test-files", argDefaults.NetArgs.TestfilesDir, "directory with test files")
 
-	flag.BoolVar(&a.NetArgs.Actions.Ask, "auto-asks", argDefaults.NetArgs.Actions.Ask, "whether to auto generate asks")
-	flag.BoolVar(&a.NetArgs.Actions.Bid, "auto-bids", argDefaults.NetArgs.Actions.Bid, "whether to auto generate bids")
-	flag.BoolVar(&a.NetArgs.Actions.Deal, "auto-deals", argDefaults.NetArgs.Actions.Deal, "whether to auto generate deals")
-	flag.BoolVar(&a.NetArgs.Actions.Payment, "auto-payments", argDefaults.NetArgs.Actions.Payment, "whether to auto generate payments")
-	flag.BoolVar(&a.NetArgs.Actions.Mine, "auto-mining", argDefaults.NetArgs.Actions.Mine, "whether to auto ")
+	usageT, err := template.New("tmplusage").Parse(Usage)
+	if err != nil {
+		panic(err)
+	}
+
+	flag.Usage = func() {
+		usageT.Execute(flag.CommandLine.Output(), argDefaults)
+	}
+
+	flag.BoolVar(&a.Debug, "debug", argDefaults.Debug, "")
+	flag.IntVar(&a.Port, "port", argDefaults.Port, "")
+
+	flag.DurationVar(&a.NetArgs.BlockTime, "t-block", argDefaults.NetArgs.BlockTime, "")
+	flag.DurationVar(&a.NetArgs.ActionTime, "t-action", argDefaults.NetArgs.ActionTime, "")
+	flag.DurationVar(&a.NetArgs.JoinTime, "t-join", argDefaults.NetArgs.JoinTime, "")
+	flag.IntVar(&a.NetArgs.ForkBranching, "fork-branching", argDefaults.NetArgs.ForkBranching, "")
+	flag.Float64Var(&a.NetArgs.ForkProbability, "fork-probability", argDefaults.NetArgs.ForkProbability, "")
+	flag.IntVar(&a.NetArgs.MaxNodes, "max-nodes", argDefaults.NetArgs.MaxNodes, "")
+	flag.IntVar(&a.NetArgs.StartNodes, "start-nodes", argDefaults.NetArgs.StartNodes, "")
+	flag.StringVar(&a.NetArgs.TestfilesDir, "test-files", argDefaults.NetArgs.TestfilesDir, "")
+
+	flag.BoolVar(&a.NetArgs.Actions.Ask, "auto-asks", argDefaults.NetArgs.Actions.Ask, "")
+	flag.BoolVar(&a.NetArgs.Actions.Bid, "auto-bids", argDefaults.NetArgs.Actions.Bid, "")
+	flag.BoolVar(&a.NetArgs.Actions.Deal, "auto-deals", argDefaults.NetArgs.Actions.Deal, "")
+	flag.BoolVar(&a.NetArgs.Actions.Payment, "auto-payments", argDefaults.NetArgs.Actions.Payment, "")
+	flag.BoolVar(&a.NetArgs.Actions.Mine, "auto-mining", argDefaults.NetArgs.Actions.Mine, "")
 
 	flag.Parse()
 
@@ -123,10 +188,11 @@ func runService(ctx context.Context, args Args) error {
 	}()
 
 	// run http
-	fmt.Println("Logs at http://127.0.0.1:7002/logs")
-	fmt.Println("Network Viz at http://127.0.0.1:7002/viz-circle")
-	fmt.Println("Chain Viz at http://127.0.0.1:7002/viz-blockchain")
-	return http.ListenAndServe(":7002", muxA)
+	addr := fmt.Sprintf("127.0.0.1:%d", args.Port)
+	fmt.Printf("Logs at http://%s/logs\n", addr)
+	fmt.Printf("Network Viz at http://%s/viz-circle\n", addr)
+	fmt.Printf("Chain Viz at http://%s/viz-blockchain\n", addr)
+	return http.ListenAndServe(addr, muxA)
 }
 
 func run(args Args) error {
