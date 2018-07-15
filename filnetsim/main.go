@@ -68,30 +68,30 @@ ACTIONS
 	MineBlock     advance an epoch: sample leaders, each mine a block & propagate it (miners only)
 
 OPTIONS
-  NETWORK
+    NETWORK
 	--max-nodes int            maximum number of nodes to spawn (default: {{.NetArgs.MaxNodes}})
 	--start-nodes int          number of nodes to spawn at once in the beginning (default: {{.NetArgs.StartNodes}})
 
-  TIME
+    TIME
 	--t-join duration          how fast new nodes are spawned (default: {{.NetArgs.JoinTime}})
 	--t-action duration        how fast to issue actions (default: {{.NetArgs.ActionTime}})
 	--t-block duration         automatic mining block time (default: {{.NetArgs.BlockTime}})
 
-  ACTIONS
+    ACTIONS
 	--auto-asks bool           automatically issue StorageAsk action (default: {{.NetArgs.Actions.Ask}})
 	--auto-bids bool           automatically issue StorageBid action (default: {{.NetArgs.Actions.Bid}})
 	--auto-deals bool          automatically issue StorageDeal action (default: {{.NetArgs.Actions.Deal}})
 	--auto-mining bool         automatically mine blocks (default: {{.NetArgs.Actions.Mine}})
 	--auto-payments bool       automatically issue StorageBid action (default: {{.NetArgs.Actions.Payment}})
 
-  MINING
+    MINING
 	--fork-branching int       number of leaders (branches) to consider per consensus epoch (default: {{.NetArgs.ForkBranching}})
 	--fork-probability float   probability individual leaders mine a block (not power) (default: {{.NetArgs.ForkProbability}})
 
-  FILES
+    FILES
 	--test-files dir           directory with test files to use with SendFiles (default: {{.NetArgs.TestfilesDir}})
 
-  OTHER
+    OTHER
 	-h, --help                 print this help text
 	--debug                    output verbose debugging logs
 	--port port                port at which to serve /logs and visualizations

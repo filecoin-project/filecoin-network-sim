@@ -28,12 +28,14 @@ type tmplNodeAddedData struct {
 	MinerAddr  string
 	SwarmAddr  string
 	ApiAddr    string
+	RepoDir    string
 	Type       NodeType
 }
 
 func init() {
 	var err error
 	tmplNodeAdded, err = template.New("tmplnodeadded").Parse(`-> Created New Node: {{.Type}}
+	repo dir: {{.RepoDir}}
 	main wallet address: {{.WalletAddr}}
 	miner actor address: {{.MinerAddr}}
 	go-filecoin swarm connect {{.SwarmAddr}}
@@ -225,6 +227,7 @@ func (n *Network) AddNode(t NodeType) (*Node, error) {
 		MinerAddr:  node.MinerAddr,
 		SwarmAddr:  node.SwarmAddr,
 		ApiAddr:    node.Daemon.CmdAddr,
+		RepoDir:    node.RepoDir,
 		Type:       node.Type,
 	})
 
