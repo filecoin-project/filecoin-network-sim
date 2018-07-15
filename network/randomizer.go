@@ -78,8 +78,10 @@ func (r *Randomizer) Run(ctx context.Context) {
 	fmt.Println("\nRandomizer running with params:")
 	fmt.Println(StructToString(&r.Args))
 
+	if r.Args.Actions.Mine {
+		go r.mineBlocks(ctx)
+	}
 	go r.addAndRemoveNodes(ctx)
-	go r.mineBlocks(ctx)
 	go r.randomActions(ctx)
 }
 
@@ -165,6 +167,8 @@ func rollToMine(probability float64) bool {
 
 // Only miners should mine block
 func (r *Randomizer) mineBlocks(ctx context.Context) {
+	fmt.Println("mining automatically")
+
 	epoch := -1 // so next one is 0.
 	r.periodic(ctx, r.Args.BlockTime, func(ctx context.Context) {
 		epoch++
