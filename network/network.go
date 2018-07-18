@@ -108,7 +108,7 @@ func (n *Node) HasMinerIdentity() bool {
 
 func (n *Node) CreateOrGetMinerIdentity() (string, error) {
 	if n.MinerAddr == "" {
-		a, err := n.CreateMinerAddr()
+		a, err := n.CreateMinerAddr(true)
 		if err != nil {
 			return "", err
 		}
