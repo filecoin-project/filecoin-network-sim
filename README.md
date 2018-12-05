@@ -42,3 +42,10 @@ This will start the server, the network simulation, and open a browser window po
 
 - This will spawn a lot of go-filecoin processes, for running daemons and for running cli commands. Many of the commands will hang forever (fail to terminate) -- this is clearly a bug that needs to be fixed (time them out). Currently, your machine may run out of process descriptors if you leave it running indefinitely (don't do that...). (TODO: fix the bug...)
 - Update wrt to the above comment, we think this is mosly fixed now, we recomend not going over 50 nodes in the simulator.
+
+## License
+
+The Filecoin Project is dual-licensed under Apache 2.0 and MIT terms:
+
+- Apache License, Version 2.0, ([LICENSE-APACHE](https://github.com/filecoin-project/filecoin-network-sim/blob/cleanup/licenses-conf/LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
+- MIT license ([LICENSE-MIT](https://github.com/filecoin-project/filecoin-network-sim/blob/cleanup/licenses-conf/LICENSE-MIT) or http://opensource.org/licenses/MIT)
