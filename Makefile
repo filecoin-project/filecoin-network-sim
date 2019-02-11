@@ -18,7 +18,7 @@ run:
 runDebug: build
 	filnetsim/filnetsim --debug
 
-deps: submodules bin/go-filecoin $(VIZ_NODE_MODULES) $(EXPLORER_NODE_MODULES)
+deps: submodules bin/go-filecoin iptb $(VIZ_NODE_MODULES) $(EXPLORER_NODE_MODULES)
 
 frontend: submodules viz explorer
 
@@ -42,5 +42,9 @@ bin/go-filecoin:
 submodules:
 	git submodule init
 	git submodule update
+
+bin/iptb:
+	go get -u github.com/ipfs/iptb
+	go build -o bin/iptb github.com/ipfs/iptb
 
 .PHONY: frontend filnetsim

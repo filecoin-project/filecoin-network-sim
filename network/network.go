@@ -1,6 +1,7 @@
 package network
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"math/rand"
@@ -10,7 +11,10 @@ import (
 	"text/template"
 
 	logs "github.com/filecoin-project/filecoin-network-sim/logs"
-	daemon "github.com/filecoin-project/go-filecoin/testhelpers"
+	address "github.com/filecoin-project/go-filecoin/address"
+	filapi "github.com/filecoin-project/go-filecoin/api"
+	fast "github.com/filecoin-project/go-filecoin/tools/fast"
+	fastseries "github.com/filecoin-project/go-filecoin/tools/fast/series"
 )
 
 type NodeType string
@@ -57,38 +61,40 @@ func RandomNodeType() NodeType {
 
 // daemon + cached info
 type Node struct {
-	*daemon.Daemon
+	Daemon *fast.Filecoin
 
 	Type       NodeType
-	ID         string
-	WalletAddr string // ClientAddr
-	MinerAddr  string
-	SwarmAddr  string
+	RepoDir    string
+	IDDetails  *filapi.IDDetails
+	WalletAddr address.Address // ClientAddr
+	MinerAddr  address.Address
+	ApiAddr    string
 	sl         *logs.SimLogger
 }
 
-func NewNode(d *daemon.Daemon, id string, t NodeType) (*Node, error) {
+func NewNode(d *fast.Filecoin, repoDir string, idDetails *filapi.IDDetails, t NodeType) (*Node, error) {
 	if t == AnyNodeType {
 		t = RandomNodeType()
 	}
 
-	addr, err := d.GetMainWalletAddress()
+	addr, err := FilecoinGetMainWalletAddress(context.TODO(), d)
 	if err != nil {
 		return nil, err
 	}
 
-	saddr, err := d.GetAddress()
+	apiAddr, err := d.APIAddr()
 	if err != nil {
 		return nil, err
 	}
 
 	n := &Node{
 		Daemon:     d,
-		ID:         id,
+		RepoDir:    repoDir,
+		IDDetails:  idDetails,
 		Type:       t,
 		WalletAddr: addr,
-		MinerAddr:  "",
-		SwarmAddr:  saddr,
+		MinerAddr:  address.Address{},
+		ApiAddr:    apiAddr,
 	}
 
 	return n, nil
@@ -96,33 +102,44 @@ func NewNode(d *daemon.Daemon, id string, t NodeType) (*Node, error) {
 
 func (n *Node) Logs() *logs.SimLogger {
 	if n.sl == nil {
-		r := n.Daemon.EventLogStream()
-		n.sl = logs.NewSimLogger(n.ID, r)
+		r, err := FilecoinLogTail(context.TODO(), n.Daemon)
+		if err != nil {
+			panic(err)
+		}
+		n.sl = logs.NewSimLogger(n.IDDetails.ID.String(), r)
 	}
 	return n.sl
 }
 
 func (n *Node) HasMinerIdentity() bool {
-	return n.MinerAddr == ""
+	return n.MinerAddr == address.Address{}
 }
 
-func (n *Node) CreateOrGetMinerIdentity() (string, error) {
-	if n.MinerAddr == "" {
-		a, err := n.CreateMinerAddr(true)
+func (n *Node) CreateOrGetMinerIdentity() (address.Address, error) {
+	if (n.MinerAddr == address.Address{}) {
+		a, err := n.CreateMinerAddr()
 		if err != nil {
-			return "", err
+			return a, err
 		}
-		n.MinerAddr = a.String()
+		n.MinerAddr = a
 	}
 	return n.MinerAddr, nil
 }
 
+func (n *Node) CreateMinerAddr() (address.Address, error) {
+	return FilecoinCreateMinerAddr(context.TODO(), n)
+}
+
 func (n *Node) GetMinerIdentity() string {
-	return n.MinerAddr
+	return n.MinerAddr.String()
 }
 
 func (n *Node) MatchesType(t NodeType) bool {
 	return t == AnyNodeType || n.Type == t
+}
+
+func (n *Node) Connect(n2 *Node) error {
+	return fastseries.Connect(context.TODO(), n.Daemon, n2.Daemon)
 }
 
 type Network struct {
@@ -136,9 +153,11 @@ type Network struct {
 func NewNetwork(repoDir string) (*Network, error) {
 	la := logs.NewLineAggregator()
 
-	if _, err := daemon.GetFilecoinBinary(); err != nil {
-		return nil, err
-	}
+	// likely do not need this anymore. (TODO)
+	// if _, err := daemon.GetFilecoinBinary(); err != nil {
+	// 	return nil, err
+	// }
+
 	return &Network{repoDir: repoDir, logs: la}, nil
 }
 
@@ -153,36 +172,34 @@ func (n *Network) Logs() *logs.LineAggregator {
 }
 
 func (n *Network) tryCreatingNode(t NodeType) (*Node, error) {
+	ctx := context.TODO()
+
 	n.lk.Lock()
 	repoNum := n.repoNum
 	n.repoNum++
 	n.lk.Unlock() // unlock to be able to set up the node w/o holding lock.
 
-	d, err := daemon.NewDaemon(
-		daemon.RepoDir(filepath.Join(n.repoDir, fmt.Sprintf("node%d", repoNum))),
-		daemon.ShouldInit(true),
-		daemon.InsecureApi(),
-		daemon.ShouldStartMining(false),
-	)
-
+	repoDir := filepath.Join(n.repoDir, fmt.Sprintf("node%d", repoNum))
+	d, err := NewFastFilecoinProc(repoDir)
 	if err != nil {
 		return nil, err
 	}
 
-	if _, err := d.Start(); err != nil {
-		d.Shutdown()
+	wait := true
+	if _, err := d.StartDaemon(context.TODO(), wait); err != nil {
+		d.StopDaemon(ctx)
 		return nil, err
 	}
 
-	id, err := d.GetID()
+	idDetails, err := d.ID(ctx)
 	if err != nil {
-		d.Shutdown()
+		d.StopDaemon(ctx)
 		return nil, err
 	}
 
-	node, err := NewNode(d, id, t)
+	node, err := NewNode(d, repoDir, idDetails, t)
 	if err != nil {
-		d.Shutdown()
+		d.StopDaemon(ctx)
 		return nil, err
 	}
 
@@ -200,7 +217,7 @@ func (n *Network) AddNode(t NodeType) (*Node, error) {
 	n.ConnectNodeToAll(node)
 
 	// frrist: we want realistic sim. lots of actions gated by 1-at-atime consesnus
-	node.Daemon.SetWaitMining(false)
+	// node.Daemon.SetWaitMining(false)
 
 	// add miner to our list.
 	n.lk.Lock()
@@ -210,29 +227,25 @@ func (n *Network) AddNode(t NodeType) (*Node, error) {
 	n.logs.MixReader(node.Logs().Reader())
 
 	// announce the miner to logs
-	eventMap := logs.NetworkChurnEvent(node.WalletAddr, string(node.Type), true)
-	eventMap["cmdAddr"] = node.CmdAddr
+	eventMap := logs.NetworkChurnEvent(node.WalletAddr.String(), string(node.Type), true)
+	eventMap["cmdAddr"] = node.ApiAddr
 
 	node.Logs().WriteEvent(eventMap)
 
-	// need some $ ...
-	if err := node.MiningOnce(); err != nil {
-		return nil, err
-	}
 	if node.Type == MinerNodeType {
 		node.CreateOrGetMinerIdentity() // sets n.MinerAddr
 	}
 
 	tmplNodeAdded.Execute(os.Stdout, tmplNodeAddedData{
-		WalletAddr: node.WalletAddr,
-		MinerAddr:  node.MinerAddr,
-		SwarmAddr:  node.SwarmAddr,
-		ApiAddr:    node.Daemon.CmdAddr,
+		WalletAddr: node.WalletAddr.String(),
+		MinerAddr:  node.MinerAddr.String(),
+		SwarmAddr:  node.IDDetails.Addresses[0].String(),
+		ApiAddr:    node.ApiAddr,
 		RepoDir:    node.RepoDir,
 		Type:       node.Type,
 	})
 
-	log.Printf("[NET]\t added a new node to the network: %s Address: %s\n", node.ID, node.WalletAddr)
+	log.Printf("[NET]\t added a new node to the network: %s Address: %s\n", node.IDDetails.ID, node.WalletAddr)
 	return node, nil
 }
 
@@ -264,7 +277,7 @@ func (n *Network) ConnectNodeToAll(node *Node) error {
 			continue // one of them will be nil
 		}
 
-		_, err := node.Connect(n2.Daemon)
+		err := node.Connect(n2)
 		if err != nil {
 			logErr(err)
 			failed++
@@ -294,7 +307,7 @@ func (n *Network) GetNodeByID(id string) *Node {
 	defer n.lk.Unlock()
 
 	for _, nd := range n.nodes {
-		if nd.ID == id {
+		if nd.IDDetails.ID.String() == id {
 			return nd
 		}
 	}
@@ -356,7 +369,7 @@ func (n *Network) ShutdownAll() error {
 	defer n.lk.Unlock()
 
 	errs := AsyncErrs(len(n.nodes), func(i int) error {
-		return n.nodes[i].Shutdown()
+		return n.nodes[i].Daemon.StopDaemon(context.TODO())
 	})
 
 	var err error

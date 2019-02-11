@@ -13,6 +13,7 @@ import (
 	"time"
 
 	sm "github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
+	types "github.com/filecoin-project/go-filecoin/types"
 
 	randfile "github.com/filecoin-project/filecoin-network-sim/randfile"
 )
@@ -184,7 +185,8 @@ func (r *Randomizer) mineBlocks(ctx context.Context) {
 				wg.Add(1)
 				go func() {
 					defer wg.Done()
-					logErr(n.Daemon.MiningOnce())
+					_, err := n.Daemon.MiningOnce(context.TODO())
+					logErr(err)
 				}()
 			}
 		}
@@ -227,29 +229,29 @@ func (r *Randomizer) doActionPayment(ctx context.Context) {
 	}
 
 	log.Print("[RAND]\t Trying to send payment.")
-	a1, err1 := nds[0].Daemon.GetMainWalletAddress()
-	a2, err2 := nds[1].Daemon.GetMainWalletAddress()
+	a1, err1 := FilecoinGetMainWalletAddress(ctx, nds[0].Daemon)
+	a2, err2 := FilecoinGetMainWalletAddress(ctx, nds[1].Daemon)
 	logErr(err1)
 	logErr(err2)
-	if a1 == "" || a2 == "" {
+	if a1.String() == "" || a2.String() == "" {
 		log.Print("[RAND]\t could not get wallet addresses.", a1, a2, err1, err2)
 		return
 	}
 
 	// ensure source has balance first. if doesn't, it wont work.
-	bal, err := nds[0].Daemon.WalletBalance(a1)
+	bal, err := nds[0].Daemon.WalletBalance(ctx, a1)
 	if err != nil {
 		log.Print("[RAND]\t could not get balance for address: ", a1)
 		return
 	}
-	if bal < amtToSend {
+	if bal.LessThan(types.NewAttoFILFromFIL(uint64(amtToSend))) {
 		log.Printf("[RAND]\t not enough money in address: %s %d", a1, bal)
 		return
 	}
 
 	// if does not succeed in 3 block times, it's hung on an error
 	ctx, _ = context.WithTimeout(ctx, r.Args.BlockTime*3)
-	logErr(nds[0].Daemon.SendFilecoin(ctx, a1, a2, amtToSend))
+	logErr(SendFilecoin(ctx, nds[0].Daemon, a1, a2, amtToSend))
 	return
 }
 
